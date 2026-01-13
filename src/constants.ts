@@ -24,5 +24,4 @@ export const OPERATORS: Record<string, string> = {
 	"&&": "LOGICAL_AND",
 	"||": "LOGICAL_OR",
 	"??": "NULLISH_COALESCING",
-	"=>": "ARROW",
 };
