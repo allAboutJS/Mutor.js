@@ -1,169 +1,196 @@
-import { KEYWORDS, OPERATORS, SPECIAL_ESCAPES } from "./constants.ts";
-import { PARENTHESES, QUOTE, TOKEN_TYPE, type Token } from "./types.ts";
+import { OPERATORS } from "./constants";
+import { TOKEN_TYPE } from "./types";
 
-export const lex = (raw: string) => {
-	const tokens: Token[] = [];
-	let isCodeBlock = false,
-		currentColumn = 0,
-		currentLine = 0,
-		textBuffer = "";
+enum MODE {
+	CODE,
+	TEXT,
+}
+
+export function lex(raw: string) {
+	const tokens = [];
+	let mode = MODE.TEXT,
+		line = 1,
+		column = 1,
+		strBuffer = "";
 
 	for (let i = 0; i < raw.length; i++) {
 		const char = raw[i];
-		const next = raw[i + 1];
 
-		currentColumn++;
-
-		if (char === "\n") {
-			currentLine++;
-			currentColumn = 0;
+		if (mode === MODE.CODE) {
+			column++;
 		}
 
-		if (!isCodeBlock) {
-			if (char === PARENTHESES.CURLY_OPEN && next === PARENTHESES.CURLY_OPEN) {
-				let lookahead = i;
-
-				while (
-					lookahead < raw.length &&
-					!(raw[lookahead] === "}" && raw[lookahead + 1] === "}")
-				) {
-					lookahead++;
-				}
-
-				if (lookahead < raw.length) {
-					if (textBuffer) {
-						tokens.push({ type: TOKEN_TYPE.TEXT, value: textBuffer });
-						textBuffer = "";
-					}
-
-					isCodeBlock = true;
-					i++;
-					continue;
-				}
+		// Enter code mode if `{{` is encountered
+		if (char === "{" && raw[i + 1] === "{" && mode === MODE.TEXT) {
+			// Push accumulated text on to the tokens array
+			if (strBuffer.length) {
+				tokens.push({ type: TOKEN_TYPE.TEXT, value: strBuffer });
+				column += strBuffer.length; // Adjust the column count
+				strBuffer = "";
 			}
 
-			textBuffer += char;
-			continue;
-		}
-
-		if (/\p{White_Space}/u.test(char)) continue;
-
-		if (char === PARENTHESES.CURLY_CLOSE && next === PARENTHESES.CURLY_CLOSE) {
-			isCodeBlock = false;
+			// Enter code mode 😡
+			mode = MODE.CODE;
+			// Skip the second '{'
 			i++;
+			tokens.push({ type: TOKEN_TYPE.CODE_START, line, column });
+			column++;
 			continue;
 		}
+
+		// Exit code mode if `}}` is encountered
+		if (char === "}" && raw[i + 1] === "}" && mode === MODE.CODE) {
+			// Enter text mode 😁
+			mode = MODE.TEXT;
+			// Skip the second `}`
+			i++;
+			tokens.push({ type: TOKEN_TYPE.CODE_END, line, column });
+			column++;
+			continue;
+		}
+
+		// Accumulate text outside of code block
+		if (mode === MODE.TEXT) {
+			// Accumulate on new line
+			if (char === "\n") {
+				tokens.push({ type: TOKEN_TYPE.TEXT, value: strBuffer });
+				strBuffer = "";
+				line++;
+				column = 1;
+			} else {
+				strBuffer += char;
+			}
+
+			continue;
+		}
+
+		// ******* This region is definitely code mode ********
+		// Here we identify keywords, numbers, strings etc
 
 		switch (true) {
-			case OPERATORS[char + next] !== undefined:
-				tokens.push({ type: TOKEN_TYPE.OPERATOR, value: char + next });
-				i++;
-				break;
-
-			case char === QUOTE.BACKTICK:
-			case char === QUOTE.DOUBLE:
-			case char === QUOTE.SINGLE: {
-				let cursor = i + 1;
-				let strBuffer = "";
-
-				while (cursor < raw.length && raw[cursor] !== char) {
-					if (raw[cursor] === "\\") {
-						const escaped = raw[cursor + 1];
-						strBuffer += SPECIAL_ESCAPES[escaped] || escaped;
-						cursor += 2;
-					} else {
-						strBuffer += raw[cursor++];
-					}
-				}
-
-				if (cursor >= raw.length) {
-					throw new Error(
-						`[Mutor.js] Unclosed string literal at ${currentLine + 1}:${currentColumn}`,
-					);
-				}
-
+			// Handle operators
+			case OPERATORS[char + raw[i + 1]] !== undefined:
 				tokens.push({
-					type: TOKEN_TYPE.STRING_LITERAL,
-					value: strBuffer,
-					isInterpolated: char === QUOTE.BACKTICK,
+					type: TOKEN_TYPE.OPERATOR,
+					value: char + raw[i + 1],
+					line,
+					column,
 				});
-				i = cursor;
+
+				i++;
+				column++;
 				break;
-			}
 
-			case /[a-zA-Z_$]/.test(char): {
-				let cursor = i;
-				let identBuffer = "";
+			// Handle and collapse whitespace and new lines
+			case char === " ":
+			case char === "\n":
+				{
+					const isNewline = char === "\n";
+					let cursor = i + 1;
 
-				while (cursor < raw.length && /[a-zA-Z0-9_$]/.test(raw[cursor])) {
-					identBuffer += raw[cursor++];
+					// Collapse all other new lines
+					// or new lines with empty spaces
+					if (isNewline) {
+						// Update line and column count
+						line++;
+
+						// Set to zero initially.
+						// This will be updated accordingly in the while loop
+						column = 0;
+
+						// Ignore other new lines and
+						// empty spaces on new line
+						while (
+							cursor < raw.length &&
+							(raw[cursor] === "\n" || raw[cursor] === " ")
+						) {
+							cursor++;
+
+							// Update line and column count
+							if (raw[cursor] === "\n") {
+								line++;
+								column = 1;
+							} else {
+								column++;
+							}
+						}
+					} else {
+						while (
+							cursor < raw.length &&
+							// Ignore other spaces or space before a newline
+							(raw[cursor] === " " || raw[cursor + 1] === "\n")
+						) {
+							cursor++;
+
+							// Update line and column count
+							if (raw[cursor] === "\n") {
+								line++;
+								column = 1;
+							} else {
+								column++;
+							}
+						}
+					}
+
+					// Reduce the excess count
+					cursor--;
+
+					tokens.push({
+						type: TOKEN_TYPE.WHITESPACE,
+						value: char,
+						line,
+						column,
+					});
+
+					if (isNewline && raw[cursor - 1] === " ") {
+						tokens.push({
+							type: TOKEN_TYPE.WHITESPACE,
+							value: " ",
+							line,
+							column,
+						});
+					}
+
+					i = cursor;
 				}
-
-				const type = KEYWORDS.has(identBuffer)
-					? TOKEN_TYPE.KEYWORD
-					: TOKEN_TYPE.VARIABLE;
-
-				tokens.push({ type, value: identBuffer });
-				i = cursor - 1;
-				break;
-			}
-
-			case /[0-9]/.test(char): {
-				let cursor = i;
-				let numBuffer = "";
-				let hasDec = false;
-				let hasExp = false;
-
-				while (cursor < raw.length && /[0-9e._]/.test(raw[cursor])) {
-					const c = raw[cursor],
-						n = raw[cursor + 1],
-						p = raw[cursor - 1];
-
-					if (c === "e" && (hasExp || !/[0-9]/.test(n))) break;
-					if (c === "_" && (!/[0-9]/.test(p) || !/[0-9]/.test(n))) break;
-					if (c === "." && (hasDec || hasExp || n === "." || !/[0-9]/.test(n)))
-						break;
-
-					if (c === ".") hasDec = true;
-					if (c === "e") hasExp = true;
-
-					numBuffer += c;
-					cursor++;
-				}
-
-				tokens.push({ type: TOKEN_TYPE.NUMBER_LITERAL, value: numBuffer });
-				i = cursor - 1;
-				break;
-			}
-
-			case "()[]{}".includes(char):
-				tokens.push({ type: TOKEN_TYPE.PARENTHESES, value: char });
 				break;
 
-			case char === ".":
-				tokens.push({ type: TOKEN_TYPE.DOT, value: char });
-				break;
-
-			case char === ":":
-				tokens.push({ type: TOKEN_TYPE.COLON, value: char });
-				break;
-
-			case char === ",":
-				tokens.push({ type: TOKEN_TYPE.COMMA, value: char });
-				break;
-
-			case "+-*/%><=!&|?".includes(char):
-				tokens.push({ type: TOKEN_TYPE.OPERATOR, value: char });
+			// Handle all other forms of whitespace
+			// TODO: Find a better way to handle this
+			case /\p{White_Space}/u.test(char):
+				tokens.push({
+					type: TOKEN_TYPE.WHITESPACE,
+					value: char,
+					line,
+					column,
+				});
 				break;
 
 			default:
-				throw new Error(
-					`[Mutor.js] Unexpected character "${char}" at ${currentLine + 1}:${currentColumn}`,
-				);
+				tokens.push({
+					type: TOKEN_TYPE.STRING_LITERAL,
+					value: char,
+					line,
+					column,
+				});
+				break;
 		}
 	}
 
-	if (textBuffer) tokens.push({ type: TOKEN_TYPE.TEXT, value: textBuffer });
+	// Push any accumulated text on to the tokens array
+	if (strBuffer.length) {
+		tokens.push({ type: TOKEN_TYPE.TEXT, value: strBuffer });
+		strBuffer = "";
+	}
 
 	return tokens;
-};
+}
+
+console.log(
+	lex(`Hi my name is {{name}} victor.
+I am {{ 
+
+   
+age
+   ==     12}} years old.`),
+);
