@@ -1,4 +1,4 @@
-import { OPERATORS } from "./constants";
+import { OPERATORS, SPECIAL_ESCAPES } from "./constants";
 import { MODE, TOKEN_TYPE } from "./types";
 
 /** Creates a stream of tokens from input text. */
@@ -148,6 +148,43 @@ export function lex(raw: string) {
 				});
 				column += cursor - i;
 				i = cursor - 1;
+				break;
+			}
+
+			// Handle quoted strings
+			case char === '"':
+			case char === "'": {
+				let cursor = i + 1;
+				let strBuffer = "";
+
+				while (
+					cursor < raw.length &&
+					raw[cursor] !== char &&
+					raw[cursor] !== "\n"
+				) {
+					if (raw[cursor] === "\\") {
+						const escaped = raw[cursor + 1];
+						strBuffer += SPECIAL_ESCAPES[escaped] || escaped;
+						cursor += 2;
+					} else {
+						strBuffer += raw[cursor++];
+					}
+				}
+
+				if (cursor >= raw.length || raw[cursor] === "\n") {
+					throw new Error(
+						`[Mutor.js] Unclosed string literal at ${line}:${column}`,
+					);
+				}
+
+				tokens.push({
+					type: TOKEN_TYPE.STRING_LITERAL,
+					value: strBuffer,
+					line,
+					column,
+				});
+				column += cursor - i;
+				i = cursor;
 				break;
 			}
 
