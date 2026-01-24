@@ -12,4 +12,5 @@ export const OPERATORS: Record<string, string> = {
 	"&&": "&&",
 	"||": "||",
 	"??": "??",
+	"=>": "=>",
 };
