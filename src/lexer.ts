@@ -59,7 +59,7 @@ export function lex(raw: string) {
 			case OPERATORS[char + raw[i + 1]] !== undefined:
 				tokens.push({
 					type: TOKEN_TYPE.OPERATOR,
-					value: char + raw[i + 1],
+					value: OPERATORS[char + raw[i + 1]],
 					line,
 					column,
 				});
