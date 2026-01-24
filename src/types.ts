@@ -1,37 +1,30 @@
+export enum MODE {
+	CODE,
+	TEXT,
+}
+
 export enum TOKEN_TYPE {
-	STRING_LITERAL = "STRING_LITERAL",
-	PARENTHESES = "PARENTHESES",
-	KEYWORD = "KEYWORD",
-	TEXT = "TEXT",
-	VARIABLE = "VARIABLE",
-	DOT = "DOT",
-	COLON = "COLON",
-	COMMA = "COMMA",
-	NUMBER_LITERAL = "NUMBER_LITERAL",
-	OPERATOR = "OPERATOR",
+	STRING_LITERAL,
+	PARENTHESES,
+	KEYWORD,
+	TEXT,
+	IDENTIFIER,
+	AT_IDENTIFIER,
+	DOT,
+	COLON,
+	COMMA,
+	NUMERIC_LITERAL,
+	WHITESPACE,
+	OPERATOR,
+	CODE_START,
+	CODE_END,
 }
 
-export enum PARENTHESES {
-	CURLY_OPEN = "{",
-	CURLY_CLOSE = "}",
-	OPEN = "(",
-	CLOSE = ")",
+export enum NODE_TYPE {
+	BINARY_EXPRESSION,
+	IDENTIFIER,
+	MEMBER_EXPRESSION,
+	NUMERIC_LITERAL,
+	STRING_LITERAL,
+	TEXT,
 }
-
-export enum QUOTE {
-	DOUBLE = '"',
-	SINGLE = "'",
-	BACKTICK = "`",
-}
-
-export interface BaseToken {
-	value: string;
-	type: TOKEN_TYPE;
-}
-
-export interface StringToken extends BaseToken {
-	isInterpolated: boolean;
-	type: TOKEN_TYPE.STRING_LITERAL;
-}
-
-export type Token = BaseToken | StringToken;
