@@ -82,9 +82,13 @@ export class Lexer {
 
 	private scanIdentifier() {
 		let strBuffer = <(typeof keywords)[number]>"";
+
+		this.back();
+
 		while (!this.isAtEnd() && /[a-zA-Z_0-9]/.test(this.peek() ?? "")) {
 			strBuffer += this.advance();
 		}
+
 		keywords.includes(strBuffer)
 			? this.addKeyword(strBuffer)
 			: this.addToken(TokenType.IDENTIFIER, strBuffer);
@@ -93,13 +97,44 @@ export class Lexer {
 	private scanNumber() {
 		let isDecimal = false;
 		let numBuffer = "";
+
+		this.back();
+
 		while (!this.isAtEnd() && /[0-9.]/.test(<string>this.peek())) {
 			const char = this.advance();
 			if (char === "." && isDecimal) break;
 			if (char === ".") isDecimal = true;
 			numBuffer += char;
 		}
+
 		this.addToken(TokenType.NUMBER, numBuffer);
+	}
+
+	private scanString() {
+		const quote = this.back();
+		let strBuffer = "";
+
+		this.advance();
+
+		while (!this.isAtEnd()) {
+			const char = this.advance();
+
+			if (char === quote) {
+				break;
+			}
+
+			if (char === "\n" && quote !== "`") {
+				throw new Error(`[Mutor.js] unterminated string on line ${this.line}`);
+			}
+
+			strBuffer += char;
+		}
+
+		if (this.isAtEnd()) {
+			throw new Error(`[Mutor.js] unterminated string on line ${this.line}`);
+		}
+
+		this.addToken(TokenType.STRING, strBuffer);
 	}
 
 	private scanToken() {
@@ -107,25 +142,33 @@ export class Lexer {
 
 		if (char === "{") {
 			const isCodeStart = this.match(char);
+
 			if (isCodeStart && this.mode !== Mode.CODE) {
 				this.addToken(TokenType.TEXT, this.textBuffer);
 				this.textBuffer = "";
 				this.addToken(TokenType.BLOCK_START);
 				this.mode = Mode.CODE;
 			}
+
 			return;
 		}
 
 		if (char === "}") {
 			const isCodeEnd = this.match(char);
+
 			if (isCodeEnd && this.mode === Mode.CODE) {
 				this.addToken(TokenType.BLOCK_END);
 				this.mode = Mode.TEXT;
 			}
+
 			return;
 		}
 
 		if (this.mode === Mode.TEXT) {
+			if (char === "\n") {
+				this.line++;
+			}
+
 			this.textBuffer += char;
 			return;
 		}
@@ -205,12 +248,16 @@ export class Lexer {
 				break;
 
 			case /[a-zA-Z_]/.test(char):
-				this.back();
 				this.scanIdentifier();
 				break;
 
+			case char === '"':
+			case char === "'":
+			case char === "`":
+				this.scanString();
+				break;
+
 			case /[0-9]/.test(char):
-				this.back();
 				this.scanNumber();
 				break;
 
@@ -225,7 +272,11 @@ export class Lexer {
 		while (!this.isAtEnd()) {
 			this.scanToken();
 		}
-		if (this.textBuffer.length) this.addToken(TokenType.TEXT, this.textBuffer);
+
+		if (this.textBuffer.length) {
+			this.addToken(TokenType.TEXT, this.textBuffer);
+		}
+
 		return this.tokens;
 	}
 }
