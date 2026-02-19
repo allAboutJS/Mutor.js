@@ -1,4 +1,5 @@
-import { keywords, Mode, type Token, TokenType } from "./constants";
+import { keywords } from "./constants";
+import { Mode, type Token, TokenType } from "./types";
 
 export class Lexer {
 	private line: number;
@@ -36,13 +37,16 @@ export class Lexer {
 	}
 
 	private match(char: string) {
-		if (this.isAtEnd() || this.src[this.cursor] !== char) return false;
+		if (this.isAtEnd() || this.src[this.cursor] !== char) {
+			return false;
+		}
+
 		this.cursor++;
 		return true;
 	}
 
 	private addToken(type: TokenType, text?: string) {
-		this.tokens.push({ type, text });
+		this.tokens.push({ type, text, line: this.line });
 	}
 
 	private skipComment() {
@@ -58,12 +62,16 @@ export class Lexer {
 
 	private addKeyword(keyword: (typeof keywords)[number]) {
 		switch (keyword) {
-			case "else":
-				this.addToken(TokenType.ELSE);
-				break;
-
 			case "end":
 				this.addToken(TokenType.END);
+				break;
+
+			case "of":
+				this.addToken(TokenType.OF);
+				break;
+
+			case "else":
+				this.addToken(TokenType.ELSE);
 				break;
 
 			case "for":
@@ -175,6 +183,36 @@ export class Lexer {
 
 		// Handle code characters.
 		switch (true) {
+			case char === "&":
+				if (this.match("&")) {
+					this.addToken(TokenType.AND);
+				} else {
+					throw new Error(
+						`[Mutor.js] Unexpected token ${char} on line ${this.line}`,
+					);
+				}
+				break;
+
+			case char === "|":
+				if (this.match("|")) {
+					this.addToken(TokenType.OR);
+				} else {
+					throw new Error(
+						`[Mutor.js] Unexpected token ${char} on line ${this.line}`,
+					);
+				}
+				break;
+
+			case char === "=":
+				if (this.match("=")) {
+					this.addToken(TokenType.EQUAL_EQUAL);
+				} else {
+					throw new Error(
+						`[Mutor.js] Unexpected token ${char} on line ${this.line}`,
+					);
+				}
+				break;
+
 			case char === ">":
 				this.match("=")
 					? this.addToken(TokenType.GREATER_EQUAL)
@@ -229,6 +267,14 @@ export class Lexer {
 				this.addToken(TokenType.COMMA);
 				break;
 
+			case char === "?":
+				this.addToken(TokenType.TERNARY);
+				break;
+
+			case char === ":":
+				this.addToken(TokenType.COLON);
+				break;
+
 			case char === "/":
 				{
 					const isComment = this.match(char);
@@ -263,11 +309,14 @@ export class Lexer {
 
 			default:
 				throw new Error(
-					`[Mutor.js] Unexpected token ${char} in line ${this.line}`,
+					`[Mutor.js] Unexpected token ${char} on line ${this.line}`,
 				);
 		}
 	}
 
+	/**
+	 * Scans the given string source and returns a stream of tokens.
+	 */
 	scanTokens() {
 		while (!this.isAtEnd()) {
 			this.scanToken();
