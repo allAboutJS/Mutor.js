@@ -98,10 +98,14 @@ export class Parser {
 	 * May be fragile but I couldn't find a better way to achieve the functionality.
 	 */
 	private expectEndBlock() {
+		const prev = this.peek(-1);
+		const current = this.peek();
+		const next = this.peek(1);
+
 		if (
-			this.peek(-1)?.type !== TokenType.BLOCK_START &&
-			this.peek()?.type !== TokenType.END &&
-			this.peek(1)?.type !== TokenType.BLOCK_END
+			prev?.type !== TokenType.BLOCK_START &&
+			current?.type !== TokenType.END &&
+			next?.type !== TokenType.BLOCK_END
 		) {
 			throw new Error(
 				`[Mutor.js] expected '{{ end }}' on line ${this.peek()?.line}`,
