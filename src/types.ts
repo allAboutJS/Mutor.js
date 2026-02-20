@@ -34,7 +34,6 @@ export enum TokenType {
 	OF,
 	IF,
 	OR,
-	THIS,
 	END,
 	TRUE,
 	// Template blocks.
@@ -54,11 +53,11 @@ export interface Token {
 }
 
 export enum NodeType {
-	TERNARY_EXPRESSION,
-	BINARY_EXPRESSION,
-	UNARY_EXPRESSION,
-	STRING_LITERAL,
-	NUMBER_LITERAL,
+	TERNARY,
+	BINARY,
+	UNARY,
+	STRING,
+	NUMBER,
 	IDENTIFIER,
 	OBJECT,
 	BLOCK_END,
@@ -67,42 +66,55 @@ export enum NodeType {
 	FOR,
 	END,
 	IF,
-	FUNCTION,
-	GROUPED_EXPRESSION,
+	GROUP,
+	TRUE,
+	FALSE,
 }
 
 export type Expression =
 	| PrimaryExpression
 	| BinaryExpression
 	| TernaryExpression
-	| MemberExpression;
+	| MemberExpression
+	| IfConditionalExpression
+	| ForLoopExpression;
 
 export type PrimaryExpression =
 	| { type: NodeType }
 	| { type: NodeType; value: string | number }
 	| { type: NodeType; name: string; callable?: boolean; args?: Expression[] };
 
-export type BinaryExpression = {
-	type: NodeType;
+export interface BinaryExpression {
+	type: NodeType.BINARY;
 	operator: Token;
 	left: Expression;
 	right: Expression;
-};
+}
 
-export type TernaryExpression = BinaryExpression & {
+export interface TernaryExpression
+	extends Omit<BinaryExpression, "operator" | "type"> {
+	type: NodeType.TERNARY;
 	condition: Expression;
-};
+}
 
-export type MemberExpression = {
-	type: NodeType;
-	property: Expression;
+export interface MemberExpression
+	extends Omit<BinaryExpression, "operator" | "type"> {
+	type: NodeType.OBJECT;
+	left: Expression;
+	right: Expression;
 	shouldCompute: boolean;
-	object: Expression;
-};
+}
 
-export type IfConditionalExpression = {
-	type: NodeType;
+export interface IfConditionalExpression {
+	type: NodeType.IF;
 	body: Expression[];
 	condition: Expression;
-	elseBlock: Expression[] | IfConditionalExpression;
-};
+	elseBlock?: Expression[] | IfConditionalExpression;
+}
+
+export interface ForLoopExpression {
+	type: NodeType.FOR;
+	body: Expression[];
+	variable: PrimaryExpression;
+	iterable: Expression;
+}

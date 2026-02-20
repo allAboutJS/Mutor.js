@@ -1,9 +1,9 @@
 import {
 	type Expression,
+	type ForLoopExpression,
 	type IfConditionalExpression,
-	type MemberExpression,
 	NodeType,
-	type PrimaryExpression,
+	type TernaryExpression,
 	type Token,
 	TokenType,
 } from "./types";
@@ -12,29 +12,29 @@ export class Parser {
 	private tokens: Token[];
 	private nodes: Expression[];
 	private cursor: number;
-	private readonly operators;
+
+	private static readonly operators = [
+		TokenType.AND,
+		TokenType.OR,
+		TokenType.BANG_EQUAL,
+		TokenType.TERNARY,
+		TokenType.GREATER,
+		TokenType.GREATER_EQUAL,
+		TokenType.LESS,
+		TokenType.LESS_EQUAL,
+		TokenType.EQUAL_EQUAL,
+		TokenType.PLUS,
+		TokenType.MINUS,
+		TokenType.SLASH,
+		TokenType.STAR,
+		TokenType.COLON,
+		TokenType.COMMA,
+	];
 
 	constructor(tokens: Token[]) {
 		this.tokens = tokens;
 		this.nodes = [];
 		this.cursor = 0;
-		this.operators = [
-			TokenType.AND,
-			TokenType.OR,
-			TokenType.BANG_EQUAL,
-			TokenType.TERNARY,
-			TokenType.GREATER,
-			TokenType.GREATER_EQUAL,
-			TokenType.LESS,
-			TokenType.LESS_EQUAL,
-			TokenType.EQUAL_EQUAL,
-			TokenType.PLUS,
-			TokenType.MINUS,
-			TokenType.SLASH,
-			TokenType.STAR,
-			TokenType.COLON,
-			TokenType.COMMA,
-		];
 	}
 
 	/**
@@ -83,7 +83,7 @@ export class Parser {
 
 		if (
 			!token ||
-			(!this.operators.includes(token.type) &&
+			(!Parser.operators.includes(token.type) &&
 				token?.type !== TokenType.BLOCK_END &&
 				token?.type !== TokenType.RIGHT_PAREN)
 		) {
@@ -235,7 +235,7 @@ export class Parser {
 	/**
 	 * Parses a `for` loop block.
 	 */
-	private parseForLoop() {
+	private parseForLoop(): ForLoopExpression {
 		// Expects an identifier which will be used to hold the
 		// value of each variable per iteration.
 		if (this.peek()?.type !== TokenType.IDENTIFIER) {
@@ -258,7 +258,7 @@ export class Parser {
 	/**
 	 * Parses and returns the parameters passed to a  given function.
 	 */
-	parseFunctionParams() {
+	private parseFunctionParams() {
 		const args: Expression[] = [];
 
 		if (this.peek()?.type !== TokenType.RIGHT_PAREN) {
@@ -312,29 +312,35 @@ export class Parser {
 		const body = this.parseExpression();
 
 		this.expectOperatorOrBlockEnd();
-		return { type: NodeType.UNARY_EXPRESSION, operator, body };
+		return { type: NodeType.UNARY, operator, body };
 	}
 
 	/**
-	 * Parses expressions grouped with parentheses.
+	 * Parses expressions GROUP with parentheses.
 	 */
-	private parseGroupedExpression() {
+	private parseGroupExpression() {
 		const body = this.parseExpression();
 
 		this.expect(TokenType.RIGHT_PAREN);
 		this.expectOperatorOrBlockEnd();
-		return { type: NodeType.GROUPED_EXPRESSION, body };
+		return { type: NodeType.GROUP, body };
 	}
 
 	/**
 	 * Returns the primary node type of a given token.
 	 */
-	private parsePrimaryExpression(): PrimaryExpression {
+	private parsePrimaryExpression(): Expression {
 		const token = this.advance();
 
 		switch (token?.type) {
+			case TokenType.FALSE:
+				return { type: NodeType.FALSE };
+
+			case TokenType.TRUE:
+				return { type: NodeType.TRUE };
+
 			case TokenType.LEFT_PAREN:
-				return this.parseGroupedExpression();
+				return this.parseGroupExpression();
 
 			case TokenType.BANG:
 			case TokenType.PLUS:
@@ -356,17 +362,16 @@ export class Parser {
 				return { type: NodeType.BLOCK_END };
 
 			case TokenType.NUMBER:
-				return { type: NodeType.NUMBER_LITERAL, value: Number(token.text) };
+				return { type: NodeType.NUMBER, value: Number(token.text) };
 
 			case TokenType.STRING:
-				return { type: NodeType.STRING_LITERAL, value: token.text };
+				return { type: NodeType.STRING, value: token.text };
 
 			case TokenType.TEXT:
 				return { type: NodeType.TEXT, value: token.text };
 
 			case TokenType.IDENTIFIER: {
-				let callable = false,
-					args: Expression[] = [];
+				let callable: boolean | undefined, args: Expression[] | undefined;
 
 				if (this.detectFunctionCall()) {
 					callable = true;
@@ -378,7 +383,7 @@ export class Parser {
 					type: NodeType.IDENTIFIER,
 					name: token.text,
 					callable,
-					args,
+					args: args || undefined,
 				};
 			}
 
@@ -392,9 +397,8 @@ export class Parser {
 	 * @example
 	 * a.b, a[1 + 1], ...
 	 */
-	private parseMemberExpression(): MemberExpression | PrimaryExpression {
-		let object: MemberExpression | PrimaryExpression =
-			this.parsePrimaryExpression();
+	private parseMemberExpression() {
+		let left = this.parsePrimaryExpression();
 
 		while (
 			this.peek()?.type === TokenType.DOT ||
@@ -402,32 +406,32 @@ export class Parser {
 		) {
 			const operator = <Token>this.advance();
 			const shouldCompute = operator.type === TokenType.LEFT_SQUARE_PAREN;
-			let property: Expression;
+			let right: Expression;
 
 			if (shouldCompute) {
 				// Property access using `[...]` is parsed here
-				property = this.parseExpression();
+				right = this.parseExpression();
 				this.expect(TokenType.RIGHT_SQUARE_PAREN);
 			} else {
-				property = this.parsePrimaryExpression();
+				right = this.parsePrimaryExpression();
 			}
 
-			object = { type: NodeType.OBJECT, shouldCompute, object, property };
+			left = { type: NodeType.OBJECT, shouldCompute, left, right };
 		}
 
 		// WHY? Well if the NodeType is not one of these,
 		// calling expectOperatorOrBlockEnd would lead to an error.
 		// Just remove it see. Make sure to put it back!!!
 		if (
-			object.type === NodeType.OBJECT ||
-			object.type === NodeType.NUMBER_LITERAL ||
-			object.type === NodeType.STRING_LITERAL ||
-			object.type === NodeType.IDENTIFIER
+			left.type === NodeType.OBJECT ||
+			left.type === NodeType.NUMBER ||
+			left.type === NodeType.STRING ||
+			left.type === NodeType.IDENTIFIER
 		) {
 			this.expectOperatorOrBlockEnd();
 		}
 
-		return object;
+		return left;
 	}
 
 	/**
@@ -445,7 +449,7 @@ export class Parser {
 			const operator = <Token>this.advance();
 			const right = this.parseMemberExpression();
 
-			left = { type: NodeType.BINARY_EXPRESSION, left, right, operator };
+			left = { type: NodeType.BINARY, left, right, operator };
 			this.expectOperatorOrBlockEnd();
 		}
 
@@ -467,7 +471,7 @@ export class Parser {
 			const operator = <Token>this.advance();
 			const right = this.parseMultiplicativeExpression();
 
-			left = { type: NodeType.BINARY_EXPRESSION, left, right, operator };
+			left = { type: NodeType.BINARY, left, right, operator };
 			this.expectOperatorOrBlockEnd();
 		}
 
@@ -490,7 +494,7 @@ export class Parser {
 			const operator = <Token>this.advance();
 			const right = this.parseAdditiveExpression();
 
-			left = { type: NodeType.BINARY_EXPRESSION, operator, left, right };
+			left = { type: NodeType.BINARY, operator, left, right };
 			this.expectOperatorOrBlockEnd();
 		}
 
@@ -502,7 +506,7 @@ export class Parser {
 	 * @example
 	 * a > b ? "YES" : "NO"
 	 */
-	private parseTernaryExpression(): Expression {
+	private parseTernaryExpression(): TernaryExpression | Expression {
 		const condition = this.parseBooleanExpression();
 
 		if (this.peek()?.type !== TokenType.TERNARY) {
@@ -512,14 +516,13 @@ export class Parser {
 		this.advance();
 
 		const left = this.parseExpression();
-		const operator = this.expect(TokenType.COLON);
+		this.expect(TokenType.COLON);
 		const right = this.parseExpression();
 
 		this.expectOperatorOrBlockEnd();
 
 		return {
-			type: NodeType.TERNARY_EXPRESSION,
-			operator,
+			type: NodeType.TERNARY,
 			condition,
 			left,
 			right,
