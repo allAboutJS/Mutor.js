@@ -82,8 +82,12 @@ export class Lexer {
 				this.addToken(TokenType.IF);
 				break;
 
-			case "this":
-				this.addToken(TokenType.THIS);
+			case "true":
+				this.addToken(TokenType.TRUE);
+				break;
+
+			case "false":
+				this.addToken(TokenType.FALSE);
 				break;
 		}
 	}
