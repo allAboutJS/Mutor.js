@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ page.title.upper }}</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>Hello {{ user.name.upper() }}!</h1>
+    <p>Today is {{ customFn("formatDate", today, "DD-MM-YYYY") }}</p>
+  </header>
+
+  <section id="notifications">
+    <h2>Notifications</h2>
+    {{ for notif of user.notifications }}
+      {{ if notif.type == "message" }}
+        <div class="notif message">
+          From: {{ notif.from.upper }} - {{ notif.content }}
+        </div>
+      {{ else if notif.type == "alert" }}
+        <div class="notif alert">
+          ALERT: {{ notif.content.upper }}
+        </div>
+      {{ else }}
+        <div class="notif misc">{{ notif.content }}</div>
+      {{ end }}
+    {{ end }}
+  </section>
+
+  <section id="items">
+    <h2>Items List</h2>
+    <ul>
+      {{ for item of items }}
+        {{ if !item.active }}
+          <li class="active">{{ do.process(item) }}</li>
+        {{ else if item.pending }}
+          <li class="pending">{{ do.queue(item) }}</li>
+        {{ else }}
+          <li class="archived">{{ do.archive(item) }}</li>
+        {{ end }}
+      {{ end }}
+    </ul>
+  </section>
+
+  <section id="friends">
+    <h2>Friends</h2>
+    <ul>
+      {{ for friend of user.friends }}
+        {{ if friend.online }}
+          <li class="online">{{ friend.name.upper }} is online</li>
+        {{ else }}
+          <li class="offline">{{ friend.name.lower }} is offline</li>
+        {{ end }}
+      {{ end }}
+    </ul>
+  </section>
+
+  <section id="dashboard">
+    <h2>Dashboard Stats</h2>
+    <p>Total items: {{ items.length }}</p>
+    <p>Score: {{ true || false ? "PASS" : "FAIL" }}</p>
+    <p>Bonus: {{ customFn("calculateBonus", user.id, score) }}</p>
+  </section>
+
+  <footer>
+    <p>© {{ customFn("formatDate", today, "YYYY") }} MyApp</p>
+  </footer>
+</body>
+</html>

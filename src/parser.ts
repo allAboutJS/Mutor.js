@@ -103,8 +103,8 @@ export class Parser {
 		const next = this.peek(1);
 
 		if (
-			prev?.type !== TokenType.BLOCK_START &&
-			current?.type !== TokenType.END &&
+			prev?.type !== TokenType.BLOCK_START ||
+			current?.type !== TokenType.END ||
 			next?.type !== TokenType.BLOCK_END
 		) {
 			throw new Error(

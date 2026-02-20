@@ -1,0 +1,617 @@
+[
+	{
+		"type": 9,
+		"value": "<!DOCTYPE html>\r\n<html lang=\"en\">\r\n<head>\r\n  <meta charset=\"UTF-8\">\r\n  <title>"
+	},
+	{
+		"type": 6,
+		"shouldCompute": false,
+		"left": {
+			"type": 6,
+			"shouldCompute": false,
+			"left": {
+				"type": 5,
+				"name": "page"
+			},
+			"right": {
+				"type": 5,
+				"name": "title"
+			}
+		},
+		"right": {
+			"type": 5,
+			"name": "upper"
+		}
+	},
+	{
+		"type": 9,
+		"value": "</title>\r\n  <link rel=\"stylesheet\" href=\"styles.css\">\r\n</head>\r\n<body>\r\n  <header>\r\n    <h1>Hello "
+	},
+	{
+		"type": 6,
+		"shouldCompute": false,
+		"left": {
+			"type": 6,
+			"shouldCompute": false,
+			"left": {
+				"type": 5,
+				"name": "user"
+			},
+			"right": {
+				"type": 5,
+				"name": "name"
+			}
+		},
+		"right": {
+			"type": 5,
+			"name": "upper",
+			"callable": true,
+			"args": []
+		}
+	},
+	{
+		"type": 9,
+		"value": "!</h1>\r\n    <p>Today is "
+	},
+	{
+		"type": 5,
+		"name": "customFn",
+		"callable": true,
+		"args": [
+			{
+				"type": 3,
+				"value": "formatDate"
+			},
+			{
+				"type": 5,
+				"name": "today"
+			},
+			{
+				"type": 3,
+				"value": "DD-MM-YYYY"
+			}
+		]
+	},
+	{
+		"type": 9,
+		"value": "</p>\r\n  </header>\r\n\r\n  <section id=\"notifications\">\r\n    <h2>Notifications</h2>\r\n    "
+	},
+	{
+		"type": 10,
+		"iterable": {
+			"type": 6,
+			"shouldCompute": false,
+			"left": {
+				"type": 5,
+				"name": "user"
+			},
+			"right": {
+				"type": 5,
+				"name": "notifications"
+			}
+		},
+		"variable": {
+			"type": 5,
+			"name": "notif"
+		},
+		"body": [
+			{
+				"type": 9,
+				"value": "\r\n      "
+			},
+			{
+				"type": 12,
+				"body": [
+					{
+						"type": 9,
+						"value": "\r\n        <div class=\"notif message\">\r\n          From: "
+					},
+					{
+						"type": 6,
+						"shouldCompute": false,
+						"left": {
+							"type": 6,
+							"shouldCompute": false,
+							"left": {
+								"type": 5,
+								"name": "notif"
+							},
+							"right": {
+								"type": 5,
+								"name": "from"
+							}
+						},
+						"right": {
+							"type": 5,
+							"name": "upper"
+						}
+					},
+					{
+						"type": 9,
+						"value": " - "
+					},
+					{
+						"type": 6,
+						"shouldCompute": false,
+						"left": {
+							"type": 5,
+							"name": "notif"
+						},
+						"right": {
+							"type": 5,
+							"name": "content"
+						}
+					},
+					{
+						"type": 9,
+						"value": "\r\n        </div>\r\n      "
+					}
+				],
+				"condition": {
+					"type": 1,
+					"operator": {
+						"type": 15,
+						"line": 17
+					},
+					"left": {
+						"type": 6,
+						"shouldCompute": false,
+						"left": {
+							"type": 5,
+							"name": "notif"
+						},
+						"right": {
+							"type": 5,
+							"name": "type"
+						}
+					},
+					"right": {
+						"type": 3,
+						"value": "message"
+					}
+				},
+				"elseBlock": {
+					"type": 12,
+					"body": [
+						{
+							"type": 9,
+							"value": "\r\n        <div class=\"notif alert\">\r\n          ALERT: "
+						},
+						{
+							"type": 6,
+							"shouldCompute": false,
+							"left": {
+								"type": 6,
+								"shouldCompute": false,
+								"left": {
+									"type": 5,
+									"name": "notif"
+								},
+								"right": {
+									"type": 5,
+									"name": "content"
+								}
+							},
+							"right": {
+								"type": 5,
+								"name": "upper"
+							}
+						},
+						{
+							"type": 9,
+							"value": "\r\n        </div>\r\n      "
+						}
+					],
+					"condition": {
+						"type": 1,
+						"operator": {
+							"type": 15,
+							"line": 21
+						},
+						"left": {
+							"type": 6,
+							"shouldCompute": false,
+							"left": {
+								"type": 5,
+								"name": "notif"
+							},
+							"right": {
+								"type": 5,
+								"name": "type"
+							}
+						},
+						"right": {
+							"type": 3,
+							"value": "alert"
+						}
+					},
+					"elseBlock": [
+						{
+							"type": 9,
+							"value": "\r\n        <div class=\"notif misc\">"
+						},
+						{
+							"type": 6,
+							"shouldCompute": false,
+							"left": {
+								"type": 5,
+								"name": "notif"
+							},
+							"right": {
+								"type": 5,
+								"name": "content"
+							}
+						},
+						{
+							"type": 9,
+							"value": "</div>\r\n      "
+						}
+					]
+				}
+			},
+			{
+				"type": 9,
+				"value": "\r\n    "
+			}
+		]
+	},
+	{
+		"type": 9,
+		"value": "\r\n  </section>\r\n\r\n  <section id=\"items\">\r\n    <h2>Items List</h2>\r\n    <ul>\r\n      "
+	},
+	{
+		"type": 10,
+		"iterable": {
+			"type": 5,
+			"name": "items"
+		},
+		"variable": {
+			"type": 5,
+			"name": "item"
+		},
+		"body": [
+			{
+				"type": 9,
+				"value": "\r\n        "
+			},
+			{
+				"type": 12,
+				"body": [
+					{
+						"type": 9,
+						"value": "\r\n          <li class=\"active\">"
+					},
+					{
+						"type": 6,
+						"shouldCompute": false,
+						"left": {
+							"type": 5,
+							"name": "do"
+						},
+						"right": {
+							"type": 5,
+							"name": "process",
+							"callable": true,
+							"args": [
+								{
+									"type": 5,
+									"name": "item"
+								}
+							]
+						}
+					},
+					{
+						"type": 9,
+						"value": "</li>\r\n        "
+					}
+				],
+				"condition": {
+					"type": 2,
+					"operator": {
+						"type": 13,
+						"line": 35
+					},
+					"body": {
+						"type": 6,
+						"shouldCompute": false,
+						"left": {
+							"type": 5,
+							"name": "item"
+						},
+						"right": {
+							"type": 5,
+							"name": "active"
+						}
+					}
+				},
+				"elseBlock": {
+					"type": 12,
+					"body": [
+						{
+							"type": 9,
+							"value": "\r\n          <li class=\"pending\">"
+						},
+						{
+							"type": 6,
+							"shouldCompute": false,
+							"left": {
+								"type": 5,
+								"name": "do"
+							},
+							"right": {
+								"type": 5,
+								"name": "queue",
+								"callable": true,
+								"args": [
+									{
+										"type": 5,
+										"name": "item"
+									}
+								]
+							}
+						},
+						{
+							"type": 9,
+							"value": "</li>\r\n        "
+						}
+					],
+					"condition": {
+						"type": 6,
+						"shouldCompute": false,
+						"left": {
+							"type": 5,
+							"name": "item"
+						},
+						"right": {
+							"type": 5,
+							"name": "pending"
+						}
+					},
+					"elseBlock": [
+						{
+							"type": 9,
+							"value": "\r\n          <li class=\"archived\">"
+						},
+						{
+							"type": 6,
+							"shouldCompute": false,
+							"left": {
+								"type": 5,
+								"name": "do"
+							},
+							"right": {
+								"type": 5,
+								"name": "archive",
+								"callable": true,
+								"args": [
+									{
+										"type": 5,
+										"name": "item"
+									}
+								]
+							}
+						},
+						{
+							"type": 9,
+							"value": "</li>\r\n        "
+						}
+					]
+				}
+			},
+			{
+				"type": 9,
+				"value": "\r\n      "
+			}
+		]
+	},
+	{
+		"type": 9,
+		"value": "\r\n    </ul>\r\n  </section>\r\n\r\n  <section id=\"friends\">\r\n    <h2>Friends</h2>\r\n    <ul>\r\n      "
+	},
+	{
+		"type": 10,
+		"iterable": {
+			"type": 6,
+			"shouldCompute": false,
+			"left": {
+				"type": 5,
+				"name": "user"
+			},
+			"right": {
+				"type": 5,
+				"name": "friends"
+			}
+		},
+		"variable": {
+			"type": 5,
+			"name": "friend"
+		},
+		"body": [
+			{
+				"type": 9,
+				"value": "\r\n        "
+			},
+			{
+				"type": 12,
+				"body": [
+					{
+						"type": 9,
+						"value": "\r\n          <li class=\"online\">"
+					},
+					{
+						"type": 6,
+						"shouldCompute": false,
+						"left": {
+							"type": 6,
+							"shouldCompute": false,
+							"left": {
+								"type": 5,
+								"name": "friend"
+							},
+							"right": {
+								"type": 5,
+								"name": "name"
+							}
+						},
+						"right": {
+							"type": 5,
+							"name": "upper"
+						}
+					},
+					{
+						"type": 9,
+						"value": " is online</li>\r\n        "
+					}
+				],
+				"condition": {
+					"type": 6,
+					"shouldCompute": false,
+					"left": {
+						"type": 5,
+						"name": "friend"
+					},
+					"right": {
+						"type": 5,
+						"name": "online"
+					}
+				},
+				"elseBlock": [
+					{
+						"type": 9,
+						"value": "\r\n          <li class=\"offline\">"
+					},
+					{
+						"type": 6,
+						"shouldCompute": false,
+						"left": {
+							"type": 6,
+							"shouldCompute": false,
+							"left": {
+								"type": 5,
+								"name": "friend"
+							},
+							"right": {
+								"type": 5,
+								"name": "name"
+							}
+						},
+						"right": {
+							"type": 5,
+							"name": "lower"
+						}
+					},
+					{
+						"type": 9,
+						"value": " is offline</li>\r\n        "
+					}
+				]
+			},
+			{
+				"type": 9,
+				"value": "\r\n      "
+			}
+		]
+	},
+	{
+		"type": 9,
+		"value": "\r\n    </ul>\r\n  </section>\r\n\r\n  <section id=\"dashboard\">\r\n    <h2>Dashboard Stats</h2>\r\n    <p>Total items: "
+	},
+	{
+		"type": 6,
+		"shouldCompute": false,
+		"left": {
+			"type": 5,
+			"name": "items"
+		},
+		"right": {
+			"type": 5,
+			"name": "length"
+		}
+	},
+	{
+		"type": 9,
+		"value": "</p>\r\n    <p>Score: "
+	},
+	{
+		"type": 0,
+		"condition": {
+			"type": 1,
+			"operator": {
+				"type": 29,
+				"line": 62
+			},
+			"left": {
+				"type": 14
+			},
+			"right": {
+				"type": 15
+			}
+		},
+		"left": {
+			"type": 3,
+			"value": "PASS"
+		},
+		"right": {
+			"type": 3,
+			"value": "FAIL"
+		}
+	},
+	{
+		"type": 9,
+		"value": "</p>\r\n    <p>Bonus: "
+	},
+	{
+		"type": 5,
+		"name": "customFn",
+		"callable": true,
+		"args": [
+			{
+				"type": 3,
+				"value": "calculateBonus"
+			},
+			{
+				"type": 6,
+				"shouldCompute": false,
+				"left": {
+					"type": 5,
+					"name": "user"
+				},
+				"right": {
+					"type": 5,
+					"name": "id"
+				}
+			},
+			{
+				"type": 5,
+				"name": "score"
+			}
+		]
+	},
+	{
+		"type": 9,
+		"value": "</p>\r\n  </section>\r\n\r\n  <footer>\r\n    <p>© "
+	},
+	{
+		"type": 5,
+		"name": "customFn",
+		"callable": true,
+		"args": [
+			{
+				"type": 3,
+				"value": "formatDate"
+			},
+			{
+				"type": 5,
+				"name": "today"
+			},
+			{
+				"type": 3,
+				"value": "YYYY"
+			}
+		]
+	},
+	{
+		"type": 9,
+		"value": " MyApp</p>\r\n  </footer>\r\n</body>\r\n</html>\r\n"
+	}
+]
