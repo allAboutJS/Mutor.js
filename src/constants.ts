@@ -4,7 +4,6 @@ export const keywords = [
 	"else",
 	"end",
 	"of",
-	"this",
 	"true",
 	"false",
 	"break",
