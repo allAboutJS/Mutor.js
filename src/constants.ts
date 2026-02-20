@@ -6,5 +6,4 @@ export const keywords = [
 	"of",
 	"true",
 	"false",
-	"break",
 ] as const;
