@@ -23,7 +23,7 @@
           ALERT: {{ notif.content.upper }}
         </div>
       {{ else }}
-        <div class="notif misc">{{ notif.content }}</div>
+        {{- }}<div class="notif misc">{{ notif.content }}</div>{{ -}}
       {{ end }}
     {{ end }}
   </section>

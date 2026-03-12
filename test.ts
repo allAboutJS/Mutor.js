@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { Lexer } from "./src/lexer";
-import { Parser } from "./src/parser";
+import { Lexer } from "./src/core/lexer";
+import { Parser } from "./src/core/parser";
 
 let dt: number;
 
