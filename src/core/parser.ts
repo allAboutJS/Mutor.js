@@ -1,4 +1,5 @@
 import {
+	type ComparisonExpression,
 	type Expression,
 	type ForLoopExpression,
 	type IfConditionalExpression,
@@ -29,6 +30,7 @@ export class Parser {
 		TokenType.STAR,
 		TokenType.COLON,
 		TokenType.COMMA,
+		TokenType.DOT,
 	];
 
 	constructor(tokens: Token[]) {
@@ -485,7 +487,7 @@ export class Parser {
 		return left;
 	}
 
-	private parseBooleanExpression() {
+	private parseComparisonExpression() {
 		let left = this.parseAdditiveExpression();
 
 		while (
@@ -501,7 +503,12 @@ export class Parser {
 			const operator = <Token>this.advance();
 			const right = this.parseAdditiveExpression();
 
-			left = { type: NodeType.BINARY, operator, left, right };
+			left = {
+				type: NodeType.COMPARISON,
+				operator,
+				left,
+				right,
+			};
 			this.expectOperatorOrBlockEnd();
 		}
 
@@ -514,7 +521,7 @@ export class Parser {
 	 * a > b ? "YES" : "NO"
 	 */
 	private parseTernaryExpression(): TernaryExpression | Expression {
-		const condition = this.parseBooleanExpression();
+		const condition = this.parseComparisonExpression();
 
 		if (this.peek()?.type !== TokenType.TERNARY) {
 			return condition;
