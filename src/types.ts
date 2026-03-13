@@ -55,6 +55,7 @@ export interface Token {
 }
 
 export enum NodeType {
+	COMPARISON,
 	WHITESPACE_DIRECTIVE,
 	TERNARY,
 	BINARY,
@@ -76,6 +77,8 @@ export enum NodeType {
 
 export type Expression =
 	| PrimaryExpression
+	| ComparisonExpression
+	| GroupExpression
 	| UnaryExpression
 	| BinaryExpression
 	| TernaryExpression
@@ -89,7 +92,13 @@ export type PrimaryExpression = {
 	name?: string;
 	callable?: boolean;
 	args?: Expression[];
+	body?: Expression;
 };
+
+export interface GroupExpression {
+	type: NodeType.GROUP;
+	body: Expression;
+}
 
 export interface UnaryExpression {
 	type: NodeType.UNARY;
@@ -102,6 +111,10 @@ export interface BinaryExpression {
 	operator: Token;
 	left: Expression;
 	right: Expression;
+}
+
+export interface ComparisonExpression extends Omit<BinaryExpression, "type"> {
+	type: NodeType.COMPARISON;
 }
 
 export interface TernaryExpression
