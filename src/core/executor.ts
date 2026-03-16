@@ -312,20 +312,78 @@ export class Executor {
 // Test
 const lexer = new Lexer(
 	`
-Hi my name is {{ user.personalInfo.fname }} {{ user.personalInfo.lname }}.
-I am {{ user['personalInfo']['age'] }} years old.
-I am {{ user.personalInfo.age >= 18 ? "" : "not"}} an adult.
-I want {{ (1000 * 100000).toLocaleString() }} Naira.
-  {{ for i of loop }}
-  {{ i.toUpperCase() + i }}
-  {{ end }}`,
+  User Report
+  -----------
+
+  Full Name: {{ user.profile.firstName + " " + user.profile.lastName }}
+  Username: {{ user.profile.username }}
+
+  Hobbies:
+  {{ for hobby of user.hobbies }}
+  - {{ hobby }}
+  {{ end }}
+
+  Projects and Tasks:
+  {{ for project of user.projects }}
+  Project: {{ project.name }}
+    Tasks:
+    {{ for task of project.tasks }}
+    * {{ task }}
+    {{ end }}
+  {{ end }}
+  `,
 );
 
 const start = performance.now();
 const parser = new Parser(lexer.scanTokens());
 const executor = new Executor(parser.parse(), {
-	user: { personalInfo: { fname: "Ugochukwu", lname: "Onah", age: 16 } },
-	loop: ["a", "b", "c"],
+	user: {
+		profile: {
+			firstName: "Ugochukwu",
+			lastName: "Onah",
+			username: "ugo_dev",
+			age: 16,
+			location: {
+				country: "Nigeria",
+				city: "Abuja",
+			},
+		},
+
+		financial: {
+			balance: 2450000,
+			salary: 350000,
+		},
+
+		profession: {
+			primarySkill: "Full Stack Development",
+			yearsExperience: 3,
+			favoriteLanguages: ["JavaScript", "Rust", "TypeScript"],
+		},
+
+		account: {
+			created: "2023-04-10",
+			active: true,
+			storageUsed: 850,
+			storageLimit: 1000,
+		},
+
+		usage: {
+			dailyRequests: 12450,
+		},
+
+		// Arrays for testing loops
+		hobbies: ["Reading", "Coding", "Gaming"],
+		projects: [
+			{
+				name: "Mutor.js",
+				tasks: ["Lexer", "Parser", "Executor"],
+			},
+			{
+				name: "Vend9ja",
+				tasks: ["Dashboard", "API", "Payment Integration"],
+			},
+		],
+	},
 });
 
 const res = executor.execute();

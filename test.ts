@@ -3,7 +3,11 @@ import { Lexer, Parser } from "./src";
 import { Executor } from "./src/core/executor";
 
 const ITERATIONS = 1000;
+const NUM_HOBBIES = 100;
+const NUM_PROJECTS = 20;
+const NUM_TASKS = 50;
 
+// Generate large arrays for stress testing
 const context = {
 	user: {
 		profile: {
@@ -11,105 +15,33 @@ const context = {
 			lastName: "Onah",
 			username: "ugo_dev",
 			age: 16,
-			location: {
-				country: "Nigeria",
-				city: "Abuja",
-			},
+			location: { country: "Nigeria", city: "Abuja" },
 		},
-
-		financial: {
-			balance: 2450000,
-			salary: 350000,
-		},
-
-		profession: {
-			primarySkill: "Full Stack Development",
-			yearsExperience: 3,
-			favoriteLanguages: ["JavaScript", "Rust", "TypeScript"],
-		},
-
-		account: {
-			created: "2023-04-10",
-			active: true,
-			storageUsed: 850,
-			storageLimit: 1000,
-		},
-
-		usage: {
-			dailyRequests: 12450,
-		},
+		hobbies: Array.from({ length: NUM_HOBBIES }, (_, i) => `Hobby ${i + 1}`),
+		projects: Array.from({ length: NUM_PROJECTS }, (_, i) => ({
+			name: `Project ${i + 1}`,
+			tasks: Array.from({ length: NUM_TASKS }, (_, j) => `Task ${j + 1}`),
+		})),
 	},
 };
 
 const template = `
-  User Report
-  -----------
+User Stress Test
+----------------
 
-  Full Name: {{ user.profile.firstName + " " + user.profile.lastName }}
-  Username: {{ user.profile.username }}
+Hobbies List:
+{{ for hobby of user.hobbies }}
+- {{ hobby }}
+{{ end }}
 
-  Age: {{ user.profile.age }}
-  Status: {{ user.profile.age >= 18 ? "Adult" : "Minor" }}
-
-  Country: {{ user.profile.location.country }}
-  City: {{ user.profile.location.city }}
-
-  Account Balance: ₦{{ user.financial.balance.toLocaleString() }}
-  Monthly Salary: ₦{{ user.financial.salary.toLocaleString() }}
-
-  Estimated Yearly Income:
-  ₦{{ (user.financial.salary * 12).toLocaleString() }}
-
-  Tax Estimate (15%):
-  ₦{{ (user.financial.salary * 12 * 0.15).toLocaleString() }}
-
-  Net Income After Tax:
-  ₦{{ (user.financial.salary * 12 * 0.85).toLocaleString() }}
-
-  Is High Earner:
-  {{ user.financial.salary >= 500000 ? "Yes" : "No" }}
-
-  Primary Skill:
-  {{ user.profession.primarySkill }}
-
-  Years of Experience:
-  {{ user.profession.yearsExperience }}
-
-  Experience Level:
-  {{ user.profession.yearsExperience >= 5 ? "Senior" : "Junior" }}
-
-  Favorite Language:
-  {{ user.profession.favoriteLanguages[0] }}
-
-  Second Favorite Language:
-  {{ user.profession.favoriteLanguages[1] }}
-
-  Account Created:
-  {{ user.account.created }}
-
-  Account Status:
-  {{ user.account.active ? "Active" : "Inactive" }}
-
-  Storage Used:
-  {{ (user.account.storageUsed / 1000).toLocaleString() }} GB
-
-  Storage Plan Limit:
-  {{ user.account.storageLimit.toLocaleString() }} GB
-
-  Storage Status:
-  {{ user.account.storageUsed >= user.account.storageLimit ? "Limit Reached" : "Within Limit" }}
-
-  Daily API Requests:
-  {{ user.usage.dailyRequests.toLocaleString() }}
-
-  Monthly API Requests:
-  {{ (user.usage.dailyRequests * 30).toLocaleString() }}
-
-  Estimated Yearly API Requests:
-  {{ (user.usage.dailyRequests * 365).toLocaleString() }}
-
-  System Greeting:
-  Hello {{ user.profile.firstName }}, welcome back.
+Projects and Tasks:
+{{ for project of user.projects }}
+Project: {{ project.name }}
+  Tasks:
+  {{ for task of project.tasks }}
+  * {{ task }}
+  {{ end }}
+{{ end }}
 `;
 
 const lexer = new Lexer(template);
