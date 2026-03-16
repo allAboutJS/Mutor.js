@@ -1,9 +1,9 @@
 import {
-	type ComparisonExpression,
 	type Expression,
 	type ForLoopExpression,
 	type IfConditionalExpression,
 	NodeType,
+	type PrimaryExpression,
 	type TernaryExpression,
 	type Token,
 	TokenType,
@@ -87,7 +87,8 @@ export class Parser {
 			!token ||
 			(!Parser.operators.includes(token.type) &&
 				token?.type !== TokenType.BLOCK_END &&
-				token?.type !== TokenType.RIGHT_PAREN)
+				token?.type !== TokenType.RIGHT_PAREN &&
+				token?.type !== TokenType.RIGHT_SQUARE_PAREN)
 		) {
 			throw new Error(`[Mutor.js] unexpected token on line ${token?.line}`);
 		}
@@ -250,7 +251,7 @@ export class Parser {
 			);
 		}
 
-		const variable = this.parsePrimaryExpression();
+		const variable = <PrimaryExpression>this.parsePrimaryExpression();
 
 		this.expect(TokenType.OF);
 
@@ -278,6 +279,7 @@ export class Parser {
 			}
 		}
 
+		this.expect(TokenType.RIGHT_PAREN);
 		return args;
 	}
 
@@ -385,7 +387,6 @@ export class Parser {
 				if (this.detectFunctionCall()) {
 					callable = true;
 					args = this.parseFunctionParams();
-					this.expect(TokenType.RIGHT_PAREN);
 				}
 
 				return {
@@ -425,7 +426,21 @@ export class Parser {
 				right = this.parsePrimaryExpression();
 			}
 
-			left = { type: NodeType.OBJECT, shouldCompute, left, right };
+			const callable = this.detectFunctionCall();
+			let args: Expression[] | undefined;
+
+			if (callable) {
+				args = this.parseFunctionParams();
+			}
+
+			left = {
+				type: NodeType.OBJECT,
+				left,
+				right,
+				args,
+				callable,
+				shouldCompute,
+			};
 		}
 
 		// WHY? Well if the NodeType is not one of these,

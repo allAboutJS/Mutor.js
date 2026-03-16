@@ -129,6 +129,8 @@ export interface MemberExpression
 	left: Expression;
 	right: Expression;
 	shouldCompute: boolean;
+	callable?: boolean;
+	args?: Expression[];
 }
 
 export interface IfConditionalExpression {

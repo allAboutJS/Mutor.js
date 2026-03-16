@@ -130,9 +130,14 @@ export class Lexer {
 
 		while (!this.isAtEnd()) {
 			const char = this.advance();
+			const escaped = false;
 
 			if (char === quote) {
 				break;
+			}
+
+			if (char === "\\") {
+				console.log("back slash detected");
 			}
 
 			if (char === "\n" && quote !== "`") {
