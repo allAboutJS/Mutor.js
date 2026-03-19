@@ -1,148 +1,149 @@
 export enum TokenType {
-	// Directives
-	WHITESPACE_DIRECTIVE,
-	// Raw text.
-	TEXT,
-	// Single-character tokens.
-	TERNARY,
-	LEFT_PAREN,
-	RIGHT_PAREN,
-	LEFT_SQUARE_PAREN,
-	RIGHT_SQUARE_PAREN,
-	COMMA,
-	DOT,
-	COLON,
-	MINUS,
-	PLUS,
-	SLASH,
-	STAR,
-	// One or two character tokens.
-	BANG,
-	BANG_EQUAL,
-	EQUAL_EQUAL,
-	GREATER,
-	GREATER_EQUAL,
-	LESS,
-	LESS_EQUAL,
-	// Literals.
-	IDENTIFIER,
-	STRING,
-	NUMBER,
-	// Keywords.
-	AND,
-	ELSE,
-	FALSE,
-	FOR,
-	OF,
-	IF,
-	OR,
-	END,
-	TRUE,
-	// Template blocks.
-	BLOCK_START,
-	BLOCK_END,
+  // Directives
+  WHITESPACE_DIRECTIVE,
+  // Raw text.
+  TEXT,
+  // Single-character tokens.
+  TERNARY,
+  LEFT_PAREN,
+  RIGHT_PAREN,
+  LEFT_SQUARE_PAREN,
+  RIGHT_SQUARE_PAREN,
+  COMMA,
+  DOT,
+  COLON,
+  MINUS,
+  PLUS,
+  SLASH,
+  STAR,
+  // One or two character tokens.
+  BANG,
+  BANG_EQUAL,
+  EQUAL_EQUAL,
+  GREATER,
+  GREATER_EQUAL,
+  LESS,
+  LESS_EQUAL,
+  // Literals.
+  IDENTIFIER,
+  STRING,
+  NUMBER,
+  // Keywords.
+  AND,
+  ELSE,
+  FALSE,
+  FOR,
+  OF,
+  IF,
+  OR,
+  END,
+  TRUE,
+  // Template blocks.
+  BLOCK_START,
+  BLOCK_END,
 }
 
 export enum Mode {
-	CODE,
-	TEXT,
+  CODE,
+  TEXT,
 }
 
 export interface Token {
-	type: TokenType;
-	text?: string;
-	line: number;
+  type: TokenType;
+  text?: string;
+  line: number;
 }
 
 export enum NodeType {
-	COMPARISON,
-	WHITESPACE_DIRECTIVE,
-	TERNARY,
-	BINARY,
-	UNARY,
-	STRING,
-	NUMBER,
-	IDENTIFIER,
-	OBJECT,
-	BLOCK_END,
-	BLOCK_START,
-	TEXT,
-	FOR,
-	END,
-	IF,
-	GROUP,
-	TRUE,
-	FALSE,
+  COMPARISON,
+  WHITESPACE_DIRECTIVE,
+  TERNARY,
+  BINARY,
+  UNARY,
+  STRING,
+  NUMBER,
+  IDENTIFIER,
+  OBJECT,
+  BLOCK_END,
+  BLOCK_START,
+  TEXT,
+  FOR,
+  END,
+  IF,
+  GROUP,
+  TRUE,
+  FALSE,
 }
 
 export type Expression =
-	| PrimaryExpression
-	| ComparisonExpression
-	| GroupExpression
-	| UnaryExpression
-	| BinaryExpression
-	| TernaryExpression
-	| MemberExpression
-	| IfConditionalExpression
-	| ForLoopExpression;
+  | PrimaryExpression
+  | ComparisonExpression
+  | GroupExpression
+  | UnaryExpression
+  | BinaryExpression
+  | TernaryExpression
+  | MemberExpression
+  | IfConditionalExpression
+  | ForLoopExpression;
 
 export type PrimaryExpression = {
-	type: NodeType;
-	value?: string | number;
-	name?: string;
-	callable?: boolean;
-	args?: Expression[];
-	body?: Expression;
+  type: NodeType;
+  value?: string | number;
+  name?: string;
+  callable?: boolean;
+  args?: Expression[];
+  body?: Expression;
+  front?: boolean;
 };
 
 export interface GroupExpression {
-	type: NodeType.GROUP;
-	body: Expression;
+  type: NodeType.GROUP;
+  body: Expression;
 }
 
 export interface UnaryExpression {
-	type: NodeType.UNARY;
-	operator: Token;
-	body: Expression;
+  type: NodeType.UNARY;
+  operator: Token;
+  body: Expression;
 }
 
 export interface BinaryExpression {
-	type: NodeType.BINARY;
-	operator: Token;
-	left: Expression;
-	right: Expression;
+  type: NodeType.BINARY;
+  operator: Token;
+  left: Expression;
+  right: Expression;
 }
 
 export interface ComparisonExpression extends Omit<BinaryExpression, "type"> {
-	type: NodeType.COMPARISON;
+  type: NodeType.COMPARISON;
 }
 
 export interface TernaryExpression
-	extends Omit<BinaryExpression, "operator" | "type"> {
-	type: NodeType.TERNARY;
-	condition: Expression;
+  extends Omit<BinaryExpression, "operator" | "type"> {
+  type: NodeType.TERNARY;
+  condition: Expression;
 }
 
 export interface MemberExpression
-	extends Omit<BinaryExpression, "operator" | "type"> {
-	type: NodeType.OBJECT;
-	left: Expression;
-	right: Expression;
-	shouldCompute: boolean;
-	callable?: boolean;
-	args?: Expression[];
+  extends Omit<BinaryExpression, "operator" | "type"> {
+  type: NodeType.OBJECT;
+  left: Expression;
+  right: Expression;
+  shouldCompute: boolean;
+  callable?: boolean;
+  args?: Expression[];
 }
 
 export interface IfConditionalExpression {
-	type: NodeType.IF;
-	body: Expression[];
-	condition: Expression;
-	elseBlock?: Expression[] | IfConditionalExpression;
+  type: NodeType.IF;
+  body: Expression[];
+  condition: Expression;
+  elseBlock?: Expression[] | IfConditionalExpression;
 }
 
 export interface ForLoopExpression {
-	type: NodeType.FOR;
-	body: Expression[];
-	variable: PrimaryExpression;
-	iterable: Expression;
+  type: NodeType.FOR;
+  body: Expression[];
+  variable: PrimaryExpression;
+  iterable: Expression;
 }
