@@ -292,7 +292,7 @@ execSuite
     console.log(String(event.target));
   })
   .on("complete", function (this: Benchmark.Suite) {
-    console.log("Fastest is " + this.filter("fastest").map("name"));
+    console.log(`Fastest is ${this.filter("fastest").map("name")}`);
   });
 
 const completeSuite = new Benchmark.Suite("Complete Pipeline Speed");
@@ -315,7 +315,7 @@ completeSuite
     console.log(String(event.target));
   })
   .on("complete", function (this: Benchmark.Suite) {
-    console.log("Fastest is " + this.filter("fastest").map("name"));
+    console.log(`Fastest is ${this.filter("fastest").map("name")}`);
   });
 
 console.log("--- 1. Compilation Speed (Benchmark.js) ---");
