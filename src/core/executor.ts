@@ -17,11 +17,13 @@ export class Executor {
   results: any[];
   currentResultsArr: any[];
   ctx: Record<string, unknown>;
+  prevCtx: Record<string, unknown>;
   trimWhitespaceAfter: boolean;
   trimBlockEnd: boolean;
 
   constructor(exprs: Expression[], ctx: Record<string, unknown>) {
     this.ctx = ctx;
+    this.prevCtx = ctx;
     this.exprs = exprs;
     this.results = [];
     this.currentResultsArr = this.results;
@@ -200,6 +202,8 @@ export class Executor {
     const leftVal = <Record<string, unknown>>this.evalExpr(left, ctx);
     const rightVal = <string>this.evalExpr(right, leftVal);
 
+    this.prevCtx = ctx;
+
     if (callable) {
       const argsVals = [];
 
@@ -229,7 +233,7 @@ export class Executor {
 
       if (args?.length) {
         for (let i = 0; i < args.length; i++) {
-          argsVals.push(this.evalExpr(args[i], ctx));
+          argsVals.push(this.evalExpr(args[i], this.prevCtx));
         }
       }
 
