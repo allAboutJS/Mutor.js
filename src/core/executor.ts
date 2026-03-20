@@ -31,7 +31,125 @@ export class Executor {
     this.trimBlockEnd = false;
   }
 
-  private executeComparisonExpr(
+  private evalUnaryExpr(expr: UnaryExpression, ctx: Record<string, unknown>) {
+    const op = expr.operator;
+    const value = this.evalExpr(expr.body, ctx);
+
+    switch (op.type) {
+      case TokenType.MINUS:
+        return -value;
+
+      case TokenType.BANG:
+        return !value;
+    }
+  }
+
+  private evalIfBlock(
+    expr: IfConditionalExpression,
+    ctx: Record<string, unknown>,
+  ): string | undefined {
+    const { body, condition, elseBlock } = expr;
+    const conditionVal = this.evalExpr(condition, ctx);
+
+    if (conditionVal) {
+      return this.trimBlockEnd
+        ? this.execute(body, [], ctx).trimEnd()
+        : this.execute(body, [], ctx);
+    }
+
+    if (elseBlock) {
+      const result = Array.isArray(elseBlock)
+        ? this.execute(elseBlock, [], ctx)
+        : this.evalIfBlock(elseBlock, ctx);
+
+      if (this.trimBlockEnd && result) {
+        this.trimBlockEnd = false;
+        return result?.trimEnd();
+      }
+
+      return result;
+    }
+  }
+
+  private evalForLoop(expr: ForLoopExpression, ctx: Record<string, unknown>) {
+    const { variable, iterable, body } = expr;
+    const iterableVal = this.evalExpr(iterable, ctx);
+
+    if (!Array.isArray(iterableVal)) {
+      throw new Error(
+        `[Mutor.js] unexpected type of iterable in for loop. Expected array, but got ${typeof iterableVal}`,
+      );
+    }
+
+    const variableVal = <string>variable.name;
+    const results = [];
+    let scopedCtx: Record<string, unknown> | undefined;
+
+    for (let i = 0; i < iterableVal.length; i++) {
+      const item = iterableVal[i];
+
+      if (!scopedCtx) {
+        scopedCtx = { ...ctx, [variableVal]: item };
+      } else {
+        scopedCtx[variableVal] = item;
+      }
+
+      results.push(this.execute(body, [], scopedCtx));
+    }
+
+    if (this.trimBlockEnd) {
+      this.trimBlockEnd = false;
+      return results.join("").trimEnd();
+    }
+
+    return results.join("");
+  }
+
+  private evalFuncCall(
+    args: Expression[],
+    prop: any,
+    ctx: Record<string, unknown>,
+    usePrevCtx?: boolean,
+  ) {
+    const argsVals = [];
+
+    if (args?.length) {
+      for (let i = 0; i < args.length; i++) {
+        argsVals.push(this.evalExpr(args[i], usePrevCtx ? this.prevCtx : ctx));
+      }
+    }
+
+    return (<typeof Function>ctx[prop]).apply(ctx, <string[]>argsVals);
+  }
+
+  private evalMemberExpr(expr: MemberExpression, ctx: Record<string, unknown>) {
+    const { left, right, shouldCompute, callable, args } = <MemberExpression>(
+      expr
+    );
+    const leftVal = <Record<string, unknown>>this.evalExpr(left, ctx);
+    const rightVal = <string>this.evalExpr(right, leftVal);
+
+    this.prevCtx = ctx;
+    if (callable) {
+      return this.evalFuncCall(args!, rightVal, ctx);
+    }
+
+    return shouldCompute ? leftVal[rightVal] : rightVal;
+  }
+
+  private evalIdentifierExpr(
+    expr: PrimaryExpression,
+    ctx: Record<string, unknown>,
+  ) {
+    const { name, callable, args } = expr;
+    if (callable) {
+      return this.evalFuncCall(args!, <string>name, ctx, true);
+    }
+
+    return ctx[<string>name];
+  }
+
+  private evalComparisonExpr(
     expr: ComparisonExpression,
     ctx: Record<string, unknown>,
   ) {
@@ -78,7 +196,7 @@ export class Executor {
     return false;
   }
 
-  private executeTernaryExpr(
+  private evalTernaryExpr(
     expr: TernaryExpression,
     ctx: Record<string, unknown>,
   ) {
@@ -92,10 +210,7 @@ export class Executor {
     return this.evalExpr(right, ctx);
   }
 
-  private executeBinaryExpr(
-    expr: BinaryExpression,
-    ctx: Record<string, unknown>,
-  ) {
+  private evalBinaryExpr(expr: BinaryExpression, ctx: Record<string, unknown>) {
     const op = expr.operator;
     const left = <unknown>this.evalExpr(expr.left, ctx);
     const right = <unknown>this.evalExpr(expr.right, ctx);
@@ -115,137 +230,6 @@ export class Executor {
     }
   }
 
-  private executeUnaryExpr(
-    expr: UnaryExpression,
-    ctx: Record<string, unknown>,
-  ) {
-    const op = expr.operator;
-    const value = this.evalExpr(expr.body, ctx);
-
-    switch (op.type) {
-      case TokenType.MINUS:
-        return -value;
-
-      case TokenType.BANG:
-        return !value;
-    }
-  }
-
-  private executeIfBlock(
-    expr: IfConditionalExpression,
-    ctx: Record<string, unknown>,
-  ): string | undefined {
-    const { body, condition, elseBlock } = expr;
-    const conditionVal = this.evalExpr(condition, ctx);
-
-    if (conditionVal) {
-      return this.trimBlockEnd
-        ? this.execute(body, [], ctx).trimEnd()
-        : this.execute(body, [], ctx);
-    }
-
-    if (elseBlock) {
-      const result = Array.isArray(elseBlock)
-        ? this.execute(elseBlock, [], ctx)
-        : this.executeIfBlock(elseBlock, ctx);
-
-      if (this.trimBlockEnd && result) {
-        this.trimBlockEnd = false;
-        return result?.trimEnd();
-      }
-
-      return result;
-    }
-  }
-
-  private executeForLoop(
-    expr: ForLoopExpression,
-    ctx: Record<string, unknown>,
-  ) {
-    const { variable, iterable, body } = expr;
-    const iterableVal = this.evalExpr(iterable, ctx);
-
-    if (!Array.isArray(iterableVal)) {
-      throw new Error(
-        `[Mutor.js] unexpected type of iterable in for loop. Expected array, but got ${typeof iterableVal}`,
-      );
-    }
-
-    const variableVal = <string>variable.name;
-    const results = [];
-    let scopedCtx: Record<string, unknown> | undefined;
-
-    for (let i = 0; i < iterableVal.length; i++) {
-      const item = iterableVal[i];
-
-      if (!scopedCtx) {
-        scopedCtx = { ...ctx, [variableVal]: item };
-      } else {
-        scopedCtx[variableVal] = item;
-      }
-
-      results.push(this.execute(body, [], scopedCtx));
-    }
-
-    if (this.trimBlockEnd) {
-      this.trimBlockEnd = false;
-      return results.join("").trimEnd();
-    }
-
-    return results.join("");
-  }
-
-  private evalMemberExpr(expr: MemberExpression, ctx: Record<string, unknown>) {
-    const { left, right, shouldCompute, callable, args } = <MemberExpression>(
-      expr
-    );
-    const leftVal = <Record<string, unknown>>this.evalExpr(left, ctx);
-    const rightVal = <string>this.evalExpr(right, leftVal);
-
-    this.prevCtx = ctx;
-
-    if (callable) {
-      const argsVals = [];
-
-      if (args?.length) {
-        for (let i = 0; i < args.length; i++) {
-          argsVals.push(this.evalExpr(args[i], ctx));
-        }
-      }
-
-      return (<typeof Function>leftVal[rightVal]).apply(
-        leftVal,
-        <string[]>argsVals,
-      );
-    }
-
-    return shouldCompute ? leftVal[rightVal] : rightVal;
-  }
-
-  private evalIdentifierExpr(
-    expr: PrimaryExpression,
-    ctx: Record<string, unknown>,
-  ) {
-    const { name, callable, args } = expr;
-
-    if (callable) {
-      const argsVals = [];
-
-      if (args?.length) {
-        for (let i = 0; i < args.length; i++) {
-          argsVals.push(this.evalExpr(args[i], this.prevCtx));
-        }
-      }
-
-      return (<typeof Function>ctx[<string>name]).apply(
-        ctx,
-        <string[]>argsVals,
-      );
-    }
-
-    return ctx[<string>name];
-  }
-
   private evalExpr(expr: Expression, ctx = this.ctx): any {
     switch (expr.type) {
       case NodeType.NUMBER:
@@ -260,25 +244,25 @@ export class Executor {
         return false;
 
       case NodeType.BINARY:
-        return this.executeBinaryExpr(<BinaryExpression>expr, ctx);
+        return this.evalBinaryExpr(<BinaryExpression>expr, ctx);
 
       case NodeType.UNARY:
-        return this.executeUnaryExpr(<UnaryExpression>expr, ctx);
+        return this.evalUnaryExpr(<UnaryExpression>expr, ctx);
 
       case NodeType.GROUP:
         return this.evalExpr(<Expression>expr.body, ctx);
 
       case NodeType.TERNARY:
-        return this.executeTernaryExpr(<TernaryExpression>expr, ctx);
+        return this.evalTernaryExpr(<TernaryExpression>expr, ctx);
 
       case NodeType.COMPARISON:
-        return this.executeComparisonExpr(<ComparisonExpression>expr, ctx);
+        return this.evalComparisonExpr(<ComparisonExpression>expr, ctx);
 
       case NodeType.FOR:
-        return this.executeForLoop(<ForLoopExpression>expr, ctx);
+        return this.evalForLoop(<ForLoopExpression>expr, ctx);
 
       case NodeType.IF:
-        return this.executeIfBlock(<IfConditionalExpression>expr, ctx);
+        return this.evalIfBlock(<IfConditionalExpression>expr, ctx);
 
       case NodeType.IDENTIFIER:
         return this.evalIdentifierExpr(<PrimaryExpression>expr, ctx);
