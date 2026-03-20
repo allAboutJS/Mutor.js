@@ -1,15 +1,14 @@
-import {
-  type Expression,
-  type ForLoopExpression,
-  type IfConditionalExpression,
-  NodeType,
-  type PrimaryExpression,
-  type TernaryExpression,
-  type Token,
-  TokenType,
-} from "../types";
+import { NodeType, TokenType } from "../types/enums";
+import type {
+  Expression,
+  ForLoopExpression,
+  IfConditionalExpression,
+  PrimaryExpression,
+  TernaryExpression,
+  Token,
+} from "../types/types";
 
-export class Parser {
+export default class Parser {
   private tokens: Token[];
   private nodes: Expression[];
   private cursor: number;
@@ -138,7 +137,7 @@ export class Parser {
 
     if (!leftValid || !rightValid) {
       throw new Error(
-        `[Mutor.js] invalid end block syntax on line ${line}. Expected '{{ end }}', '{{- end }}', '{{ end -}}', or '{{- end -}}'`,
+        `[Mutor.js] Invalid end block syntax on line ${line}. Expected '{{ end }}', '{{- end }}', '{{ end -}}', or '{{- end -}}'`,
       );
     }
 
@@ -228,9 +227,14 @@ export class Parser {
     }
 
     const condition = this.parseExpression();
-    this.expect(TokenType.BLOCK_END);
+    if (this.peek()?.type === TokenType.WHITESPACE_DIRECTIVE) {
+      this.trimNextExpr = true;
+      this.advance();
+    }
 
+    this.expect(TokenType.BLOCK_END);
     const body: Expression[] = [];
+
     if (this.trimNextExpr) {
       body.unshift({ type: NodeType.WHITESPACE_DIRECTIVE, front: false });
       this.trimNextExpr = false;
@@ -292,7 +296,7 @@ export class Parser {
     // value of each variable per iteration.
     if (this.peek()?.type !== TokenType.IDENTIFIER) {
       throw new Error(
-        `[Mutor.js] malformed for loop on line ${this.peek()?.line}`,
+        `[Mutor.js] Malformed for loop on line ${this.peek()?.line}`,
       );
     }
 
@@ -363,7 +367,7 @@ export class Parser {
       (token?.type === TokenType.MINUS || token?.type === TokenType.PLUS)
     ) {
       throw new Error(
-        `[Mutor.js] unexpected unary expression on ${token?.line}`,
+        `[Mutor.js] Unexpected unary expression on ${token?.line}`,
       );
     }
 
@@ -478,7 +482,7 @@ export class Parser {
         return this.parseIdentifier(token);
 
       default:
-        throw new Error(`[Mutor.js] unexpected token on line ${token?.line}`);
+        throw new Error(`[Mutor.js] Unexpected token on line ${token?.line}`);
     }
   }
 

@@ -1,9 +1,10 @@
 import { performance } from "node:perf_hooks";
 import Benchmark from "benchmark";
 import ejs from "ejs";
+import { Eta } from "eta";
 import Handlebars from "handlebars";
 import nunjucks from "nunjucks";
-import { Executor, Lexer, Parser } from "../src";
+import { compile, render } from "../dist";
 
 // Context generator
 function createUsers(count = 20, tasks = 10) {
@@ -36,6 +37,25 @@ const mutorTemplate = `
       </section>
     {{ end }}
   {{ end }}
+</div>
+`;
+
+const etaTemplate = `
+<div>
+<% it.users.forEach(user => { %>
+  <% if(user.active) { %>
+    <section>
+      <h2><%= user.name %></h2>
+      <ul>
+        <% it.users[0].tasks.constructor === Array && user.tasks.forEach(task => { %>
+          <% if(task.done) { %>
+            <li><%= task.title %></li>
+          <% } %>
+        <% }) %>
+      </ul>
+    </section>
+  <% } %>
+<% }) %>
 </div>
 `;
 
@@ -99,11 +119,13 @@ const njTemplate = `
 </div>
 `;
 
+const eta = new Eta({ autoEscape: true });
 nunjucks.configure({ autoescape: true });
 
 // Precompiled variants
-const mutorAST = new Parser(new Lexer(mutorTemplate).scanTokens()).parse();
+const mutorRender = compile(mutorTemplate);
 const ejsRender = ejs.compile(ejsTemplate);
+const etaRender = eta.compile(etaTemplate);
 const hbRender = Handlebars.compile(hbTemplate);
 const njRender = nunjucks.compile(njTemplate);
 
@@ -158,7 +180,14 @@ console.log("--- 1. Compilation Speed (Lexing + Parsing) ---");
 runForLoopBenchmark(
   "Mutor.js Compile",
   () => {
-    new Parser(new Lexer(mutorTemplate).scanTokens()).parse();
+    compile(mutorTemplate);
+  },
+  ITERATIONS,
+);
+runForLoopBenchmark(
+  "Eta Compile",
+  () => {
+    eta.compile(etaTemplate);
   },
   ITERATIONS,
 );
@@ -188,7 +217,14 @@ console.log("\n--- 2. Execution Speed (Precompiled) ---");
 runForLoopBenchmark(
   "Mutor.js Execute",
   () => {
-    new Executor(mutorAST, ctx).execute();
+    render(mutorRender, ctx);
+  },
+  ITERATIONS,
+);
+runForLoopBenchmark(
+  "Eta Execute",
+  () => {
+    etaRender.call(eta, ctx);
   },
   ITERATIONS,
 );
@@ -218,8 +254,16 @@ console.log("\n--- 3. Complete Pipeline Speed (Compile + Execute) ---");
 runForLoopBenchmark(
   "Mutor.js Complete",
   () => {
-    const ast = new Parser(new Lexer(mutorTemplate).scanTokens()).parse();
-    new Executor(ast, ctx).execute();
+    const ast = compile(mutorTemplate);
+    render(ast, ctx);
+  },
+  ITERATIONS,
+);
+runForLoopBenchmark(
+  "Eta Complete",
+  () => {
+    const fn = eta.compile(etaTemplate);
+    fn.call(eta, ctx);
   },
   ITERATIONS,
 );
@@ -256,7 +300,10 @@ console.log("=========================================\n");
 const compileSuite = new Benchmark.Suite("Compilation (Lexing + Parsing)");
 compileSuite
   .add("Mutor.js Compile", () => {
-    new Parser(new Lexer(mutorTemplate).scanTokens()).parse();
+    compile(mutorTemplate);
+  })
+  .add("Eta Compile", () => {
+    eta.compile(etaTemplate);
   })
   .add("EJS Compile", () => {
     ejs.compile(ejsTemplate);
@@ -277,7 +324,10 @@ compileSuite
 const execSuite = new Benchmark.Suite("Execution Speed (Precompiled)");
 execSuite
   .add("Mutor.js Execute", () => {
-    new Executor(mutorAST, ctx).execute();
+    render(mutorRender, ctx);
+  })
+  .add("Eta Execute", () => {
+    etaRender.call(eta, ctx);
   })
   .add("EJS Execute", () => {
     ejsRender(ctx);
@@ -298,8 +348,12 @@ execSuite
 const completeSuite = new Benchmark.Suite("Complete Pipeline Speed");
 completeSuite
   .add("Mutor.js Complete", () => {
-    const ast = new Parser(new Lexer(mutorTemplate).scanTokens()).parse();
-    new Executor(ast, ctx).execute();
+    const ast = compile(mutorTemplate);
+    render(ast, ctx);
+  })
+  .add("Eta Complete", () => {
+    const fn = eta.compile(etaTemplate);
+    fn.call(eta, ctx);
   })
   .add("EJS Complete", () => {
     ejs.render(ejsTemplate, ctx);

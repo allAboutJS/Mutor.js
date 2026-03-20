@@ -111,14 +111,8 @@ const njTemplate = `
 // Precompile all templates
 // -------------------------
 
-const mutorAST = new Parser(new Lexer(mutorTemplate).scanTokens()).parse();
 // --- Mutor precompile ---
-const mutorCompile = () => {
-  return new Executor(mutorAST, { users: createUsers(2, 2) }).execute();
-};
-
-console.log(JSON.stringify(mutorAST, null, 2));
-console.log(mutorCompile());
+const mutorAST = new Parser(new Lexer(mutorTemplate).tokenize()).parse();
 
 // --- EJS precompile ---
 const ejsRender = ejs.compile(ejsTemplate);

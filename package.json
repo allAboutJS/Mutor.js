@@ -1,6 +1,6 @@
 {
   "name": "mutor-js",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "A high-performance, AST-based logic engine for secure templating.",
   "keywords": [
     "Template",
@@ -25,7 +25,8 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "npm run test",
+    "test": "yarn tsx ./tests/index.ts",
+    "test:server": "yarn tsx ./tests/index.ts server",
     "prepare": "husky"
   },
   "devDependencies": {
@@ -41,7 +42,10 @@
     "handlebars": "^4.7.8",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
-    "nunjucks": "^3.2.4"
+    "nunjucks": "^3.2.4",
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
   },
   "lint-staged": {
     "*.{js,ts,json}": [
@@ -49,6 +53,7 @@
     ]
   },
   "dependencies": {
-    "@types/benchmark": "^2.1.5"
+    "@types/benchmark": "^2.1.5",
+    "eta": "^4.5.1"
   }
 }

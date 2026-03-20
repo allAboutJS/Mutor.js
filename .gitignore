@@ -57,3 +57,5 @@ Thumbs.db
 .eslintcache
 .stylelintcache
 .prettiercache
+
+tests/output.*

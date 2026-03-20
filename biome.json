@@ -19,7 +19,8 @@
       "suspicious": {
         "noExplicitAny": "off"
       },
-      "style": { "noNonNullAssertion": "off" }
+      "style": { "noNonNullAssertion": "off" },
+      "complexity": { "noStaticOnlyClass": "off" }
     }
   },
   "javascript": {

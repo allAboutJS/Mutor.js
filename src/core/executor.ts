@@ -1,27 +1,27 @@
-import {
-  type BinaryExpression,
-  type ComparisonExpression,
-  type Expression,
-  type ForLoopExpression,
-  type IfConditionalExpression,
-  type MemberExpression,
-  NodeType,
-  type PrimaryExpression,
-  type TernaryExpression,
-  TokenType,
-  type UnaryExpression,
-} from "../types";
+import { NodeType, TokenType } from "../types/enums";
+import type {
+  BinaryExpression,
+  ComparisonExpression,
+  Context,
+  Expression,
+  ForLoopExpression,
+  IfConditionalExpression,
+  MemberExpression,
+  PrimaryExpression,
+  TernaryExpression,
+  UnaryExpression,
+} from "../types/types";
 
-export class Executor {
+export default class Executor {
   exprs: Expression[];
   results: any[];
   currentResultsArr: any[];
-  ctx: Record<string, unknown>;
-  prevCtx: Record<string, unknown>;
+  ctx: Context;
+  prevCtx: Context;
   trimWhitespaceAfter: boolean;
   trimBlockEnd: boolean;
 
-  constructor(exprs: Expression[], ctx: Record<string, unknown>) {
+  constructor(exprs: Expression[], ctx: Context) {
     this.ctx = ctx;
     this.prevCtx = ctx;
     this.exprs = exprs;
@@ -31,7 +31,7 @@ export class Executor {
     this.trimBlockEnd = false;
   }
 
-  private evalUnaryExpr(expr: UnaryExpression, ctx: Record<string, unknown>) {
+  private evalUnaryExpr(expr: UnaryExpression, ctx: Context) {
     const op = expr.operator;
     const value = this.evalExpr(expr.body, ctx);
 
@@ -46,7 +46,7 @@ export class Executor {
 
   private evalIfBlock(
     expr: IfConditionalExpression,
-    ctx: Record<string, unknown>,
+    ctx: Context,
   ): string | undefined {
     const { body, condition, elseBlock } = expr;
     const conditionVal = this.evalExpr(condition, ctx);
@@ -71,7 +71,7 @@ export class Executor {
     }
   }
 
-  private evalForLoop(expr: ForLoopExpression, ctx: Record<string, unknown>) {
+  private evalForLoop(expr: ForLoopExpression, ctx: Context) {
     const { variable, iterable, body } = expr;
     const iterableVal = this.evalExpr(iterable, ctx);
 
@@ -83,7 +83,7 @@ export class Executor {
 
     const variableVal = <string>variable.name;
     const results = [];
-    let scopedCtx: Record<string, unknown> | undefined;
+    let scopedCtx: Context | undefined;
 
     for (let i = 0; i < iterableVal.length; i++) {
       const item = iterableVal[i];
@@ -108,7 +108,7 @@ export class Executor {
   private evalFuncCall(
     args: Expression[],
     prop: any,
-    ctx: Record<string, unknown>,
+    ctx: Context,
     usePrevCtx?: boolean,
   ) {
     const argsVals = [];
@@ -122,11 +122,16 @@ export class Executor {
     return (<typeof Function>ctx[prop]).apply(ctx, <string[]>argsVals);
   }
 
-  private evalMemberExpr(expr: MemberExpression, ctx: Record<string, unknown>) {
+  private evalMemberExpr(expr: MemberExpression, ctx: Context) {
     const { left, right, shouldCompute, callable, args } = <MemberExpression>(
       expr
     );
-    const leftVal = <Record<string, unknown>>this.evalExpr(left, ctx);
+
+    if (!shouldCompute && right.type !== NodeType.IDENTIFIER) {
+      throw Error("[Mutor.js] Invalid property access");
+    }
+
+    const leftVal = <Context>this.evalExpr(left, ctx);
     const rightVal = <string>this.evalExpr(right, leftVal);
 
     this.prevCtx = ctx;
@@ -137,10 +142,7 @@ export class Executor {
     return shouldCompute ? leftVal[rightVal] : rightVal;
   }
 
-  private evalIdentifierExpr(
-    expr: PrimaryExpression,
-    ctx: Record<string, unknown>,
-  ) {
+  private evalIdentifierExpr(expr: PrimaryExpression, ctx: Context) {
     const { name, callable, args } = expr;
     if (callable) {
       return this.evalFuncCall(args!, <string>name, ctx, true);
@@ -149,10 +151,7 @@ export class Executor {
     return ctx[<string>name];
   }
 
-  private evalComparisonExpr(
-    expr: ComparisonExpression,
-    ctx: Record<string, unknown>,
-  ) {
+  private evalComparisonExpr(expr: ComparisonExpression, ctx: Context) {
     const { left, operator, right } = expr;
     const leftVal = this.evalExpr(left, ctx);
 
@@ -196,10 +195,7 @@ export class Executor {
     return false;
   }
 
-  private evalTernaryExpr(
-    expr: TernaryExpression,
-    ctx: Record<string, unknown>,
-  ) {
+  private evalTernaryExpr(expr: TernaryExpression, ctx: Context) {
     const { condition, left, right } = expr;
     const conditionVal = this.evalExpr(condition, ctx);
 
@@ -210,7 +206,7 @@ export class Executor {
     return this.evalExpr(right, ctx);
   }
 
-  private evalBinaryExpr(expr: BinaryExpression, ctx: Record<string, unknown>) {
+  private evalBinaryExpr(expr: BinaryExpression, ctx: Context) {
     const op = expr.operator;
     const left = <unknown>this.evalExpr(expr.left, ctx);
     const right = <unknown>this.evalExpr(expr.right, ctx);

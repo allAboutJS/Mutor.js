@@ -1,7 +1,8 @@
-import { keywords } from "../constants";
-import { Mode, type Token, TokenType } from "../types";
+import { Mode, TokenType } from "../types/enums";
+import type { Token } from "../types/types";
+import { keywords } from "./utils";
 
-export class Lexer {
+export default class Lexer {
   private line: number;
   private src: string;
   private cursor: number;
@@ -332,7 +333,7 @@ export class Lexer {
   /**
    * Scans the given string source and returns a stream of tokens.
    */
-  scanTokens() {
+  tokenize() {
     while (!this.isAtEnd()) {
       this.scanToken();
     }
