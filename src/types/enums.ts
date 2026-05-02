@@ -1,70 +1,38 @@
 export enum TokenType {
-  // Directives
-  WHITESPACE_DIRECTIVE,
-  // Raw text.
-  TEXT,
-  // Single-character tokens.
-  TERNARY,
-  LEFT_PAREN,
-  RIGHT_PAREN,
-  LEFT_SQUARE_PAREN,
-  RIGHT_SQUARE_PAREN,
-  COMMA,
-  DOT,
-  COLON,
-  MINUS,
-  PLUS,
-  SLASH,
-  STAR,
-  // One or two character tokens.
-  BANG,
-  BANG_EQUAL,
-  EQUAL_EQUAL,
-  GREATER,
-  GREATER_EQUAL,
-  LESS,
-  LESS_EQUAL,
-  // Literals.
-  IDENTIFIER,
-  STRING,
+  IDENT,
+  KEYWORD,
   NUMBER,
-  // Keywords.
-  AND,
-  ELSE,
-  FALSE,
-  FOR,
-  OF,
-  IF,
-  OR,
-  END,
-  TRUE,
-  // Template blocks.
-  BLOCK_START,
-  BLOCK_END,
+  STRING,
+  OPERATOR,
 }
 
-export enum NodeType {
-  COMPARISON,
-  WHITESPACE_DIRECTIVE,
-  TERNARY,
+export enum ExprType {
   BINARY,
+  TERNARY,
   UNARY,
+  CALL,
   STRING,
   NUMBER,
-  IDENTIFIER,
-  OBJECT,
-  BLOCK_END,
-  BLOCK_START,
-  TEXT,
-  FOR,
-  END,
-  IF,
+  NAMESPACE,
+  IDENT,
+  PROP_ACCESS,
   GROUP,
-  TRUE,
-  FALSE,
+  BOOLEAN,
+  UNDEFINED,
+  NULL,
+  FOR,
+  IF,
+  ELSE_IF,
+  ELSE,
+  END,
 }
 
-export enum Mode {
-  CODE,
-  TEXT,
+export enum LoopType {
+  OF,
+  IN,
+}
+
+export enum BlockType {
+  LOOP,
+  NON_LOOP,
 }

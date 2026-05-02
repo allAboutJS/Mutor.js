@@ -1,10 +1,9 @@
-import { performance } from "node:perf_hooks";
 import Benchmark from "benchmark";
 import ejs from "ejs";
 import { Eta } from "eta";
 import Handlebars from "handlebars";
 import nunjucks from "nunjucks";
-import { compile, render } from "../dist";
+import compile from "../src/core/compile";
 
 // Context generator
 function createUsers(count = 20, tasks = 10) {
@@ -129,170 +128,6 @@ const etaRender = eta.compile(etaTemplate);
 const hbRender = Handlebars.compile(hbTemplate);
 const njRender = nunjucks.compile(njTemplate);
 
-// Helper for for-loop benchmarks
-function runForLoopBenchmark(
-  name: string,
-  fn: () => void,
-  iterations: number = 10000,
-) {
-  const times: number[] = new Array(iterations);
-  let total = 0;
-
-  // Warm-up
-  for (let i = 0; i < Math.min(iterations, 100); i++) {
-    fn();
-  }
-
-  for (let i = 0; i < iterations; i++) {
-    const start = performance.now();
-    fn();
-    const end = performance.now();
-    const duration = end - start;
-    times[i] = duration;
-    total += duration;
-  }
-
-  let min = times[0];
-  let max = times[0];
-  for (let i = 1; i < iterations; i++) {
-    if (times[i] < min) min = times[i];
-    if (times[i] > max) max = times[i];
-  }
-
-  const avg = total / iterations;
-  console.log(`[${name}] x ${iterations} iterations`);
-  console.log(`  Avg: ${avg.toFixed(4)} ms`);
-  console.log(`  Min: ${min.toFixed(4)} ms`);
-  console.log(`  Max: ${max.toFixed(4)} ms`);
-  console.log(`  Total: ${total.toFixed(2)} ms`);
-}
-
-// ------------------------------------------------------------------
-// 1. MANUAL FOR-LOOP BENCHMARKS
-// ------------------------------------------------------------------
-console.log("=========================================");
-console.log(" MANUAL FOR-LOOP BENCHMARKS");
-console.log("=========================================\n");
-
-const ITERATIONS = 10000;
-
-console.log("--- 1. Compilation Speed (Lexing + Parsing) ---");
-runForLoopBenchmark(
-  "Mutor.js Compile",
-  () => {
-    compile(mutorTemplate);
-  },
-  ITERATIONS,
-);
-runForLoopBenchmark(
-  "Eta Compile",
-  () => {
-    eta.compile(etaTemplate);
-  },
-  ITERATIONS,
-);
-runForLoopBenchmark(
-  "EJS Compile",
-  () => {
-    ejs.compile(ejsTemplate);
-  },
-  ITERATIONS,
-);
-runForLoopBenchmark(
-  "Handlebars Compile",
-  () => {
-    Handlebars.compile(hbTemplate);
-  },
-  ITERATIONS,
-);
-runForLoopBenchmark(
-  "Nunjucks Compile",
-  () => {
-    nunjucks.compile(njTemplate);
-  },
-  ITERATIONS,
-);
-
-console.log("\n--- 2. Execution Speed (Precompiled) ---");
-runForLoopBenchmark(
-  "Mutor.js Execute",
-  () => {
-    render(mutorRender, ctx);
-  },
-  ITERATIONS,
-);
-runForLoopBenchmark(
-  "Eta Execute",
-  () => {
-    etaRender.call(eta, ctx);
-  },
-  ITERATIONS,
-);
-runForLoopBenchmark(
-  "EJS Execute",
-  () => {
-    ejsRender(ctx);
-  },
-  ITERATIONS,
-);
-runForLoopBenchmark(
-  "Handlebars Execute",
-  () => {
-    hbRender(ctx);
-  },
-  ITERATIONS,
-);
-runForLoopBenchmark(
-  "Nunjucks Execute",
-  () => {
-    njRender.render(ctx);
-  },
-  ITERATIONS,
-);
-
-console.log("\n--- 3. Complete Pipeline Speed (Compile + Execute) ---");
-runForLoopBenchmark(
-  "Mutor.js Complete",
-  () => {
-    const ast = compile(mutorTemplate);
-    render(ast, ctx);
-  },
-  ITERATIONS,
-);
-runForLoopBenchmark(
-  "Eta Complete",
-  () => {
-    const fn = eta.compile(etaTemplate);
-    fn.call(eta, ctx);
-  },
-  ITERATIONS,
-);
-runForLoopBenchmark(
-  "EJS Complete",
-  () => {
-    ejs.render(ejsTemplate, ctx);
-  },
-  ITERATIONS,
-);
-runForLoopBenchmark(
-  "Handlebars Complete",
-  () => {
-    const render = Handlebars.compile(hbTemplate);
-    render(ctx);
-  },
-  ITERATIONS,
-);
-runForLoopBenchmark(
-  "Nunjucks Complete",
-  () => {
-    nunjucks.renderString(njTemplate, ctx);
-  },
-  ITERATIONS,
-);
-
-// ------------------------------------------------------------------
-// 2. BENCHMARK.JS LIBRARY SUITES
-// ------------------------------------------------------------------
 console.log("\n=========================================");
 console.log(" BENCHMARK.JS SUITES");
 console.log("=========================================\n");
@@ -324,7 +159,7 @@ compileSuite
 const execSuite = new Benchmark.Suite("Execution Speed (Precompiled)");
 execSuite
   .add("Mutor.js Execute", () => {
-    render(mutorRender, ctx);
+    mutorRender(ctx);
   })
   .add("Eta Execute", () => {
     etaRender.call(eta, ctx);
@@ -348,8 +183,8 @@ execSuite
 const completeSuite = new Benchmark.Suite("Complete Pipeline Speed");
 completeSuite
   .add("Mutor.js Complete", () => {
-    const ast = compile(mutorTemplate);
-    render(ast, ctx);
+    const render = compile(mutorTemplate);
+    render(ctx);
   })
   .add("Eta Complete", () => {
     const fn = eta.compile(etaTemplate);

@@ -1,4 +1,10 @@
+import { BlockType } from "../types/enums";
+import type { ForExpr } from "../types/types";
+import build from "./build";
 import MutorError from "./error";
+import { generateAst } from "./generate-ast";
+import parse from "./parse";
+import tokenize from "./tokenize";
 import { config, delimiters } from "./utils/defaults";
 import getLineAndColumnNumbers from "./utils/get-line-and-column-nums";
 import getLineSnapshot from "./utils/get-line-snapshot";
@@ -11,26 +17,53 @@ import getLineSnapshot from "./utils/get-line-snapshot";
  */
 export default function compile(
   src: string,
-  meta = { path: "partial://anonymous" },
+  meta = {
+    path: "partial://anonymous",
+    allowedProps: new Set<string>(),
+    forbiddenProps: new Set<string>(),
+  },
 ) {
+  const scope: string[] = [];
+  const blockOpeningStack: BlockType[] = [];
+
+  // whitespace control
+  let trimNext = false,
+    sideToTrim: string | null = null;
+
   let cursor = 0,
-    body = 'var acc="";';
+    body = `
+    function validateComputedProp(computed) {
+      if (forbiddenProps.has(computed) && !allowedProps.has(computed)) {
+        throw new Error(\`Forbidden property access. Access to this computed property "\${computed}" is forbidden.\`);
+      }
+      return computed;
+    }
+
+    var acc = "";
+    `;
 
   while (cursor < src.length) {
     const templateOpenTagIdx = src.indexOf(delimiters.openingTag, cursor);
     if (templateOpenTagIdx === -1) {
-      // No template block found
       body += `acc+=\`${src.slice(cursor)}\`;`;
       break;
     }
 
-    const isEscapedOpenTag =
-      src.slice(
-        templateOpenTagIdx - delimiters.openingTagEscape.length,
-        templateOpenTagIdx,
-      ) === delimiters.openingTagEscape;
+    function isEscaped() {
+      let j = templateOpenTagIdx,
+        count = 0;
+      while (
+        src.slice(j - delimiters.openingTagEscape.length, j) ===
+          delimiters.openingTagEscape &&
+        j >= 0
+      ) {
+        count++;
+        j -= delimiters.openingTagEscape.length;
+      }
+      return count % 2 === 1;
+    }
 
-    if (isEscapedOpenTag) {
+    if (isEscaped()) {
       body += `acc+=\`${src.slice(
         cursor,
         config.keepOpeningTagEscapeDelimiter
@@ -46,11 +79,20 @@ export default function compile(
       continue;
     }
 
-    body += `acc+=\`${src.slice(cursor, templateOpenTagIdx)}\`;`;
+    const rawText = src.slice(cursor, templateOpenTagIdx);
+    if (rawText) {
+      if (trimNext && sideToTrim === "left") {
+        body += `acc+=\`${rawText.trimStart()}\`;\n`;
+        trimNext = false;
+        sideToTrim = null;
+      } else {
+        body += `acc+=\`${rawText}\`;\n`;
+      }
+    }
+
     const templateEndTagIdx = src.indexOf(delimiters.closingTag, cursor);
 
     if (templateEndTagIdx === -1) {
-      // No template end tag found
       const { line, lineIndex } = getLineAndColumnNumbers(
         src,
         templateOpenTagIdx,
@@ -76,15 +118,92 @@ export default function compile(
     );
 
     cursor = templateEndTagIdx + 2;
-    console.log(template);
+    const { inner, leftTrim, isBlock, isBlockEnd, hasContext, rightTrim } =
+      parse(template);
+
+    if (leftTrim) {
+      if (scope.length) {
+        trimNext = true;
+        sideToTrim = "left";
+      } else {
+        body += "acc=acc.trimEnd();\n";
+      }
+    }
+
+    try {
+      const tokens = tokenize(inner);
+      const ast = generateAst(tokens);
+
+      if (hasContext) {
+        scope.push((ast as ForExpr).variable);
+        blockOpeningStack.push(BlockType.LOOP);
+      }
+
+      if (isBlock && !hasContext) {
+        blockOpeningStack.push(BlockType.NON_LOOP);
+      }
+
+      if (isBlockEnd) {
+        const lastBlockOpened = blockOpeningStack.pop();
+        if (lastBlockOpened === BlockType.LOOP) {
+          scope.pop();
+        }
+      }
+
+      const js = build(ast, {
+        allowedProps: meta.allowedProps,
+        forbiddenProps: meta.forbiddenProps,
+        scope,
+      });
+
+      // APPLY DEFERRED RIGHT TRIM BEFORE PROCESSING NEXT TOKEN
+      if (trimNext && sideToTrim === "left") {
+        body += "acc=acc.trimEnd();\n";
+        trimNext = false;
+        sideToTrim = null;
+      }
+
+      if (isBlock || isBlockEnd) {
+        body += js;
+      } else {
+        body += `acc+=""+(${js}) ?? "";\n`;
+
+        if (rightTrim) {
+          trimNext = true;
+          sideToTrim = "left";
+        }
+      }
+    } catch (e) {
+      const { message, pos: relativeErrPos } = e as {
+        message: string;
+        pos: number;
+      };
+
+      const { line, lineIndex } = getLineAndColumnNumbers(
+        src,
+        templateOpenTagIdx,
+      );
+
+      const { line: lineText, pos } = getLineSnapshot(
+        src,
+        lineIndex,
+        templateOpenTagIdx,
+      );
+
+      throw new MutorError(
+        message,
+        line,
+        lineText,
+        pos +
+          relativeErrPos +
+          (leftTrim
+            ? delimiters.openingTag.length + delimiters.whitespaceTrim.length
+            : delimiters.openingTag.length),
+        meta.path,
+      );
+    }
   }
 
-  return body;
+  body += `\nreturn acc;`;
+  return new Function("ctx", "namespaces", body);
 }
-
-console.log(
-  compile(`
-This template is no close
-This is not close t <% This sure -Sharp %>
-Ok na`),
-);

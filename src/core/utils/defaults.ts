@@ -23,9 +23,9 @@ export const delimiters = {
   /**
    * Specifies whether to trim whitespace before or after template blocks.
    */
-  whitespaceEscape: "-",
+  whitespaceTrim: "~",
   /**
    * Tells the compiler that the following text should not be treated as an template block opening tag.
    */
-  openingTagEscape: "!",
+  openingTagEscape: "\\",
 };

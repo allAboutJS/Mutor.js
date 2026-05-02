@@ -1,82 +1,159 @@
-import type { NodeType, TokenType } from "./enums";
+import type { ExprType, LoopType, TokenType } from "./enums";
 
-export interface Context extends Record<string, unknown> {}
-
-export interface Token {
+export type BaseToken = {
   type: TokenType;
-  text?: string;
-  line: number;
-}
-
-export type Expression =
-  | PrimaryExpression
-  | ComparisonExpression
-  | GroupExpression
-  | UnaryExpression
-  | BinaryExpression
-  | TernaryExpression
-  | MemberExpression
-  | IfConditionalExpression
-  | ForLoopExpression;
-
-export type PrimaryExpression = {
-  type: NodeType;
-  value?: string | number;
-  name?: string;
-  callable?: boolean;
-  args?: Expression[];
-  body?: Expression;
-  front?: boolean;
+  value: string;
+  pos: number;
 };
 
-export interface GroupExpression {
-  type: NodeType.GROUP;
-  body: Expression;
-}
+export type KeywordToken = BaseToken & { type: TokenType.KEYWORD };
+export type IdentToken = BaseToken & { type: TokenType.IDENT };
+export type StringToken = BaseToken & { type: TokenType.STRING };
+export type NumberToken = BaseToken & { type: TokenType.NUMBER };
+export type OperatorToken = BaseToken & { type: TokenType.OPERATOR };
 
-export interface UnaryExpression {
-  type: NodeType.UNARY;
-  operator: Token;
-  body: Expression;
-}
+export type Token =
+  | BaseToken
+  | KeywordToken
+  | IdentToken
+  | StringToken
+  | NumberToken
+  | OperatorToken;
 
-export interface BinaryExpression {
-  type: NodeType.BINARY;
-  operator: Token;
-  left: Expression;
-  right: Expression;
-}
+export type EndExpr = {
+  type: ExprType.END;
+  pos: number;
+};
 
-export interface ComparisonExpression extends Omit<BinaryExpression, "type"> {
-  type: NodeType.COMPARISON;
-}
+export type ForExpr = {
+  pos: number;
+  type: ExprType.FOR;
+  variable: string;
+  iterable: Expr;
+  loopType: LoopType;
+};
 
-export interface TernaryExpression
-  extends Omit<BinaryExpression, "operator" | "type"> {
-  type: NodeType.TERNARY;
-  condition: Expression;
-}
+export type IfExpr = {
+  pos: number;
+  type: ExprType.IF;
+  condition: Expr;
+};
 
-export interface MemberExpression
-  extends Omit<BinaryExpression, "operator" | "type"> {
-  type: NodeType.OBJECT;
-  left: Expression;
-  right: Expression;
-  shouldCompute: boolean;
-  callable?: boolean;
-  args?: Expression[];
-}
+export type ElseExpr = {
+  pos: number;
+  type: ExprType.ELSE;
+};
 
-export interface IfConditionalExpression {
-  type: NodeType.IF;
-  body: Expression[];
-  condition: Expression;
-  elseBlock?: Expression[] | IfConditionalExpression;
-}
+export type ElseIfExpr = {
+  pos: number;
+  type: ExprType.ELSE_IF;
+  condition: Expr;
+};
 
-export interface ForLoopExpression {
-  type: NodeType.FOR;
-  body: Expression[];
-  variable: PrimaryExpression;
-  iterable: Expression;
-}
+export type BooleanExpr = {
+  pos: number;
+  type: ExprType.BOOLEAN;
+  true: boolean;
+};
+
+export type UndefinedExpr = {
+  pos: number;
+  type: ExprType.UNDEFINED;
+};
+
+export type NullExpr = {
+  pos: number;
+  type: ExprType.NULL;
+};
+
+export type PropAccessExpr = {
+  pos: number;
+  type: ExprType.PROP_ACCESS;
+  left: Expr;
+  right: Expr;
+  bracketNotation?: boolean;
+  optional?: boolean;
+};
+
+export type BinaryExpr = {
+  pos: number;
+  type: ExprType.BINARY;
+  left: Expr;
+  right: Expr;
+  operator: string;
+};
+
+export type UnaryExpr = {
+  pos: number;
+  type: ExprType.UNARY;
+  operator: string;
+  expr: Expr;
+  isPostfix?: boolean;
+};
+
+export type TernaryExpr = {
+  pos: number;
+  type: ExprType.TERNARY;
+  condition: Expr;
+  left: Expr;
+  right: Expr;
+};
+
+export type CallExpr = {
+  pos: number;
+  type: ExprType.CALL;
+  expr: Expr;
+  args: Expr[];
+  optional?: boolean;
+};
+
+export type IdentExpr = {
+  pos: number;
+  type: ExprType.IDENT;
+  value: string;
+};
+
+export type GroupExpr = {
+  pos: number;
+  type: ExprType.GROUP;
+  expr: Expr;
+};
+
+export type StringExpr = {
+  pos: number;
+  type: ExprType.STRING;
+  value: string;
+};
+
+export type NumberExpr = {
+  pos: number;
+  type: ExprType.NUMBER;
+  value: string;
+};
+
+export type NamespaceExpr = {
+  pos: number;
+  type: ExprType.NAMESPACE;
+  left: Expr;
+  right: Expr;
+};
+
+export type Expr =
+  | ForExpr
+  | IfExpr
+  | ElseIfExpr
+  | ElseExpr
+  | EndExpr
+  | BooleanExpr
+  | NullExpr
+  | UndefinedExpr
+  | PropAccessExpr
+  | IdentExpr
+  | BinaryExpr
+  | UnaryExpr
+  | TernaryExpr
+  | CallExpr
+  | GroupExpr
+  | StringExpr
+  | NumberExpr
+  | NamespaceExpr;

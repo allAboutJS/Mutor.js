@@ -1,6 +1,0 @@
-{{ config.setTitle("Mutor.js Test") }}
-{{- if false -}}
- {{config.title}}
-{{- else -}}
-False
-{{- end -}}
