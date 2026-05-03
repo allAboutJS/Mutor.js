@@ -3,9 +3,9 @@ import ejs from "ejs";
 import { Eta } from "eta";
 import Handlebars from "handlebars";
 import nunjucks from "nunjucks";
-import compile from "../src/core/compile";
+import { compile as mutorCompile } from "../src";
 
-// Context generator
+// Context
 function createUsers(count = 20, tasks = 10) {
   return Array.from({ length: count }, (_, i) => ({
     name: `User_${i}`,
@@ -19,7 +19,7 @@ function createUsers(count = 20, tasks = 10) {
 
 const ctx = { users: createUsers(20, 10) };
 
-// Mutor.js template
+// Templates (equivalent)
 const mutorTemplate = `
 <div>
   {{ for user of users }}
@@ -42,32 +42,12 @@ const mutorTemplate = `
 const etaTemplate = `
 <div>
 <% it.users.forEach(user => { %>
-  <% if(user.active) { %>
-    <section>
-      <h2><%= user.name %></h2>
-      <ul>
-        <% it.users[0].tasks.constructor === Array && user.tasks.forEach(task => { %>
-          <% if(task.done) { %>
-            <li><%= task.title %></li>
-          <% } %>
-        <% }) %>
-      </ul>
-    </section>
-  <% } %>
-<% }) %>
-</div>
-`;
-
-// EJS template
-const ejsTemplate = `
-<div>
-<% users.forEach(user => { %>
-  <% if(user.active) { %>
+  <% if (user.active) { %>
     <section>
       <h2><%= user.name %></h2>
       <ul>
         <% user.tasks.forEach(task => { %>
-          <% if(task.done) { %>
+          <% if (task.done) { %>
             <li><%= task.title %></li>
           <% } %>
         <% }) %>
@@ -78,7 +58,25 @@ const ejsTemplate = `
 </div>
 `;
 
-// Handlebars template
+const ejsTemplate = `
+<div>
+<% users.forEach(user => { %>
+  <% if (user.active) { %>
+    <section>
+      <h2><%= user.name %></h2>
+      <ul>
+        <% user.tasks.forEach(task => { %>
+          <% if (task.done) { %>
+            <li><%= task.title %></li>
+          <% } %>
+        <% }) %>
+      </ul>
+    </section>
+  <% } %>
+<% }) %>
+</div>
+`;
+
 const hbTemplate = `
 <div>
 {{#each users}}
@@ -98,7 +96,6 @@ const hbTemplate = `
 </div>
 `;
 
-// Nunjucks template
 const njTemplate = `
 <div>
 {% for user in users %}
@@ -118,24 +115,40 @@ const njTemplate = `
 </div>
 `;
 
+// Engine setup
 const eta = new Eta({ autoEscape: true });
 nunjucks.configure({ autoescape: true });
 
-// Precompiled variants
-const mutorRender = compile(mutorTemplate);
-const ejsRender = ejs.compile(ejsTemplate);
+// Precompile
+const mutorRender = mutorCompile(mutorTemplate);
 const etaRender = eta.compile(etaTemplate);
+const ejsRender = ejs.compile(ejsTemplate);
 const hbRender = Handlebars.compile(hbTemplate);
 const njRender = nunjucks.compile(njTemplate);
 
+// Mutor compile args
+const namespaces = {};
+const allowedProps = new Set();
+const forbiddenProps = new Set();
+
+// Warm up
+for (let i = 0; i < 1000; i++) {
+  mutorRender(ctx, namespaces, allowedProps, forbiddenProps);
+  etaRender.call(eta, ctx);
+  ejsRender(ctx);
+  hbRender(ctx);
+  njRender.render(ctx);
+}
+
+// Benchmark suites
 console.log("\n=========================================");
-console.log(" BENCHMARK.JS SUITES");
+console.log(" BENCHMARK.JS (FAIR)");
 console.log("=========================================\n");
 
-const compileSuite = new Benchmark.Suite("Compilation (Lexing + Parsing)");
-compileSuite
+// 1. Compilation
+new Benchmark.Suite("Compilation")
   .add("Mutor.js Compile", () => {
-    compile(mutorTemplate);
+    mutorCompile(mutorTemplate);
   })
   .add("Eta Compile", () => {
     eta.compile(etaTemplate);
@@ -149,17 +162,16 @@ compileSuite
   .add("Nunjucks Compile", () => {
     nunjucks.compile(njTemplate);
   })
-  .on("cycle", (event: Benchmark.Event) => {
-    console.log(String(event.target));
+  .on("cycle", (e) => console.log(String(e.target)))
+  .on("complete", function () {
+    console.log("Fastest:", this.filter("fastest").map("name"));
   })
-  .on("complete", function (this: Benchmark.Suite) {
-    console.log(`Fastest is ${this.filter("fastest").map("name")}`);
-  });
+  .run({ async: false });
 
-const execSuite = new Benchmark.Suite("Execution Speed (Precompiled)");
-execSuite
+// 2. Execution
+new Benchmark.Suite("Execution")
   .add("Mutor.js Execute", () => {
-    mutorRender(ctx);
+    mutorRender(ctx, namespaces, allowedProps, forbiddenProps);
   })
   .add("Eta Execute", () => {
     etaRender.call(eta, ctx);
@@ -173,45 +185,34 @@ execSuite
   .add("Nunjucks Execute", () => {
     njRender.render(ctx);
   })
-  .on("cycle", (event: Benchmark.Event) => {
-    console.log(String(event.target));
+  .on("cycle", (e) => console.log(String(e.target)))
+  .on("complete", function () {
+    console.log("Fastest:", this.filter("fastest").map("name"));
   })
-  .on("complete", function (this: Benchmark.Suite) {
-    console.log(`Fastest is ${this.filter("fastest").map("name")}`);
-  });
+  .run({ async: false });
 
-const completeSuite = new Benchmark.Suite("Complete Pipeline Speed");
-completeSuite
-  .add("Mutor.js Complete", () => {
-    const render = compile(mutorTemplate);
-    render(ctx);
+// 3. Full pipeline
+new Benchmark.Suite("Full Pipeline")
+  .add("Mutor.js Full", () => {
+    const r = mutorCompile(mutorTemplate);
+    r(ctx);
   })
-  .add("Eta Complete", () => {
-    const fn = eta.compile(etaTemplate);
-    fn.call(eta, ctx);
+  .add("Eta Full", () => {
+    const r = eta.compile(etaTemplate);
+    r.call(eta, ctx);
   })
-  .add("EJS Complete", () => {
+  .add("EJS Full", () => {
     ejs.render(ejsTemplate, ctx);
   })
-  .add("Handlebars Complete", () => {
-    const render = Handlebars.compile(hbTemplate);
-    render(ctx);
+  .add("Handlebars Full", () => {
+    const r = Handlebars.compile(hbTemplate);
+    r(ctx);
   })
-  .add("Nunjucks Complete", () => {
+  .add("Nunjucks Full", () => {
     nunjucks.renderString(njTemplate, ctx);
   })
-  .on("cycle", (event: Benchmark.Event) => {
-    console.log(String(event.target));
+  .on("cycle", (e) => console.log(String(e.target)))
+  .on("complete", function () {
+    console.log("Fastest:", this.filter("fastest").map("name"));
   })
-  .on("complete", function (this: Benchmark.Suite) {
-    console.log(`Fastest is ${this.filter("fastest").map("name")}`);
-  });
-
-console.log("--- 1. Compilation Speed (Benchmark.js) ---");
-compileSuite.run({ async: false });
-
-console.log("\n--- 2. Execution Speed (Benchmark.js) ---");
-execSuite.run({ async: false });
-
-console.log("\n--- 3. Complete Pipeline Speed (Benchmark.js) ---");
-completeSuite.run({ async: false });
+  .run({ async: false });

@@ -107,7 +107,11 @@ export default function build(
   function buildPropAccess(expr: PropAccessExpr): string {
     const left = buildExpr(expr.left);
 
-    if (expr.bracketNotation) {
+    if (
+      expr.bracketNotation &&
+      expr.right.type !== ExprType.STRING &&
+      expr.right.type !== ExprType.NUMBER
+    ) {
       // Bracket notation: evaluate the expression and check the resolved value at runtime
       const right = buildExpr(expr.right);
       const optionalChain = expr.optional ? "?." : "";

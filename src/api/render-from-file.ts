@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import compile from "../core/compile";
 import toAbsolutePath from "../core/utils/to-absolute-path";
+import validateContext from "../core/utils/validateContext";
 import {
   getCompiledTemplate,
   hasCompiledTemplate,
@@ -28,5 +29,5 @@ export default function renderFromFile(
     setCompiledTemplate(absolutePath, compiled);
   }
 
-  return compiled(ctx);
+  return compiled(validateContext(ctx));
 }
