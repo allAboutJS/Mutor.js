@@ -157,3 +157,27 @@ export type Expr =
   | StringExpr
   | NumberExpr
   | NamespaceExpr;
+
+export type PartialMutorConfig = Partial<{
+  keepOpeningTagEscapeDelimiter: boolean;
+  allowedProps: Set<string>;
+  forbiddenProps: Set<string>;
+  delimiters: Partial<{
+    openingTag: string;
+    closingTag: string;
+    whitespaceTrim: string;
+    openingTagEscape: string;
+  }>;
+}>;
+
+export type MutorConfig = {
+  keepOpeningTagEscapeDelimiter: boolean;
+  allowedProps: Set<string>;
+  forbiddenProps: Set<string>;
+  delimiters: {
+    openingTag: string;
+    closingTag: string;
+    whitespaceTrim: string;
+    openingTagEscape: string;
+  };
+};

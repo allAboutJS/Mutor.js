@@ -20,7 +20,7 @@
         "noExplicitAny": "off"
       },
       "style": { "noNonNullAssertion": "off" },
-      "complexity": { "noStaticOnlyClass": "off" }
+      "complexity": { "noStaticOnlyClass": "off", "noBannedTypes": "off" }
     }
   },
   "javascript": {

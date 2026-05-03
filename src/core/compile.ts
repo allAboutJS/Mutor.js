@@ -1,3 +1,4 @@
+import { getConfig } from "../providers/config";
 import { BlockType } from "../types/enums";
 import type { ForExpr } from "../types/types";
 import build from "./build";
@@ -5,7 +6,6 @@ import MutorError from "./error";
 import { generateAst } from "./generate-ast";
 import parse from "./parse";
 import tokenize from "./tokenize";
-import { config, delimiters } from "./utils/defaults";
 import getLineAndColumnNumbers from "./utils/get-line-and-column-nums";
 import getLineSnapshot from "./utils/get-line-snapshot";
 
@@ -19,12 +19,13 @@ export default function compile(
   src: string,
   meta = {
     path: "partial://anonymous",
-    allowedProps: new Set<string>(),
-    forbiddenProps: new Set<string>(),
+    allowedProps: getConfig().allowedProps,
+    forbiddenProps: getConfig().forbiddenProps,
   },
 ) {
   const scope: string[] = [];
-  const blockOpeningStack: BlockType[] = [];
+  const blockOpeningStack: { type: BlockType; pos: number }[] = [];
+  const { delimiters, keepOpeningTagEscapeDelimiter } = getConfig();
 
   // whitespace control
   let trimNext = false,
@@ -66,12 +67,12 @@ export default function compile(
     if (isEscaped()) {
       body += `acc+=\`${src.slice(
         cursor,
-        config.keepOpeningTagEscapeDelimiter
+        keepOpeningTagEscapeDelimiter
           ? templateOpenTagIdx + delimiters.openingTagEscape.length + 1
           : templateOpenTagIdx - delimiters.openingTag.length + 1,
       )}\`;`;
 
-      if (!config.keepOpeningTagEscapeDelimiter) {
+      if (!keepOpeningTagEscapeDelimiter) {
         body += `acc+=\`${delimiters.openingTag}\`;`;
       }
 
@@ -136,17 +137,31 @@ export default function compile(
 
       if (hasContext) {
         scope.push((ast as ForExpr).variable);
-        blockOpeningStack.push(BlockType.LOOP);
+        blockOpeningStack.push({
+          type: BlockType.LOOP,
+          pos: templateOpenTagIdx,
+        });
       }
 
       if (isBlock && !hasContext) {
-        blockOpeningStack.push(BlockType.NON_LOOP);
+        blockOpeningStack.push({
+          type: BlockType.NON_LOOP,
+          pos: templateOpenTagIdx,
+        });
       }
 
       if (isBlockEnd) {
         const lastBlockOpened = blockOpeningStack.pop();
-        if (lastBlockOpened === BlockType.LOOP) {
+
+        if (lastBlockOpened?.type === BlockType.LOOP) {
           scope.pop();
+        }
+
+        if (lastBlockOpened === undefined) {
+          throw {
+            message: "Unexpected end of block",
+            pos: templateOpenTagIdx,
+          };
         }
       }
 
@@ -204,6 +219,36 @@ export default function compile(
     }
   }
 
+  if (blockOpeningStack.length) {
+    const templateOpenTagIdx = blockOpeningStack.pop()?.pos;
+
+    const { line, lineIndex } = getLineAndColumnNumbers(
+      src,
+      templateOpenTagIdx as number,
+    );
+
+    const { line: lineText, pos } = getLineSnapshot(
+      src,
+      lineIndex,
+      templateOpenTagIdx as number,
+    );
+
+    throw new MutorError(
+      "Expected a block end declaration for this block but found non.\n" +
+        "Please add a block end declaration (`{{ end }}`) after your block's logic to close the block",
+      line,
+      lineText,
+      pos + delimiters.openingTag.length,
+      meta.path,
+    );
+  }
+
   body += `\nreturn acc;`;
-  return new Function("ctx", "namespaces", body);
+  return new Function(
+    "ctx",
+    "namespaces",
+    "allowedProps",
+    "forbiddenProps",
+    body,
+  );
 }
