@@ -3,7 +3,7 @@ import ejs from "ejs";
 import { Eta } from "eta";
 import Handlebars from "handlebars";
 import nunjucks from "nunjucks";
-import { compile as mutorCompile } from "../src";
+import { getConfig, compile as mutorCompile } from "../src";
 
 // Context
 function createUsers(count = 20, tasks = 10) {
@@ -119,17 +119,20 @@ const njTemplate = `
 const eta = new Eta({ autoEscape: true });
 nunjucks.configure({ autoescape: true });
 
+// Mutor compile args
+const namespaces = {};
+const { allowedProps, forbiddenProps } = getConfig();
+
 // Precompile
-const mutorRender = mutorCompile(mutorTemplate);
+const mutorRender = mutorCompile(mutorTemplate, {
+  allowedProps,
+  forbiddenProps,
+  path: "anonymous",
+});
 const etaRender = eta.compile(etaTemplate);
 const ejsRender = ejs.compile(ejsTemplate);
 const hbRender = Handlebars.compile(hbTemplate);
 const njRender = nunjucks.compile(njTemplate);
-
-// Mutor compile args
-const namespaces = {};
-const allowedProps = new Set();
-const forbiddenProps = new Set();
 
 // Warm up
 for (let i = 0; i < 1000; i++) {
@@ -148,7 +151,11 @@ console.log("=========================================\n");
 // 1. Compilation
 new Benchmark.Suite("Compilation")
   .add("Mutor.js Compile", () => {
-    mutorCompile(mutorTemplate);
+    mutorCompile(mutorTemplate, {
+      allowedProps,
+      forbiddenProps,
+      path: "anonymous",
+    });
   })
   .add("Eta Compile", () => {
     eta.compile(etaTemplate);
@@ -194,7 +201,11 @@ new Benchmark.Suite("Execution")
 // 3. Full pipeline
 new Benchmark.Suite("Full Pipeline")
   .add("Mutor.js Full", () => {
-    const r = mutorCompile(mutorTemplate);
+    const r = mutorCompile(mutorTemplate, {
+      allowedProps,
+      forbiddenProps,
+      path: "anonymous",
+    });
     r(ctx);
   })
   .add("Eta Full", () => {
