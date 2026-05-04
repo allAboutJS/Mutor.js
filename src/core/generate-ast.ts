@@ -23,7 +23,7 @@ import { getTokenTypeWords } from "./utils/get-token-type-words";
  * @param config Configuration option
  * @returns
  */
-export function generateAst(
+export default function generateAst(
   tokens: Token[],
   config: { allowFnCalls: boolean },
 ): Expr {

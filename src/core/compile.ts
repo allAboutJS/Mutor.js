@@ -3,7 +3,7 @@ import { BlockType } from "../types/enums";
 import type { CompileMetadata, ForExpr } from "../types/types";
 import build from "./build";
 import MutorError from "./error";
-import { generateAst } from "./generate-ast";
+import generateAst from "./generate-ast";
 import parse from "./parse";
 import tokenize from "./tokenize";
 import getLineAndColumnNumbers from "./utils/get-line-and-column-nums";

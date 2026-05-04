@@ -158,21 +158,8 @@ export type Expr =
   | NumberExpr
   | NamespaceExpr;
 
-export type PartialMutorConfig = Partial<{
-  keepOpeningTagEscapeDelimiter: boolean;
-  allowedProps: Set<string>;
-  forbiddenProps: Set<string>;
-  namespaces: Record<string, any>;
-  allowFnCalls: boolean;
-  delimiters: Partial<{
-    openingTag: string;
-    closingTag: string;
-    whitespaceTrim: string;
-    openingTagEscape: string;
-  }>;
-}>;
-
-export type MutorConfig = {
+export interface MutorConfig {
+  dev: boolean;
   keepOpeningTagEscapeDelimiter: boolean;
   allowedProps: Set<string>;
   forbiddenProps: Set<string>;
@@ -184,6 +171,10 @@ export type MutorConfig = {
     whitespaceTrim: string;
     openingTagEscape: string;
   };
+}
+
+export type PartialMutorConfig = Partial<Omit<MutorConfig, "delimiters">> & {
+  delimiters?: Partial<MutorConfig["delimiters"]>;
 };
 
 export type BuildContext = {

@@ -1,8 +1,14 @@
 const OBJECT = "object";
-
-const seen = new WeakSet();
+export const MUTOR_SAFE = Symbol("__mutor_safe_context");
 
 export default function validateContext(ctx: Record<any, any>) {
+  if (MUTOR_SAFE in ctx) {
+    return ctx;
+  }
+
+  // vulnerability and prevent memory leaks across request lifecycles.
+  const seen = new WeakSet();
+
   function walk(value: any, path = "") {
     if (!value || typeof value !== OBJECT) return value;
 
@@ -64,5 +70,16 @@ export default function validateContext(ctx: Record<any, any>) {
     return value;
   }
 
-  return walk(ctx);
+  const safeData = walk(ctx);
+
+  if (safeData && typeof safeData === OBJECT) {
+    Object.defineProperty(safeData, MUTOR_SAFE, {
+      value: true,
+      enumerable: false,
+      writable: false,
+      configurable: false,
+    });
+  }
+
+  return safeData;
 }

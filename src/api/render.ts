@@ -1,6 +1,6 @@
 import compile from "../core/compile";
-import validateContext from "../core/utils/validate-context";
 import { getConfig } from "../providers/config";
+import validateContext from "./validate-context";
 
 export default function render(
   template: string,

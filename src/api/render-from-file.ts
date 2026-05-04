@@ -1,13 +1,13 @@
 import { readFileSync } from "node:fs";
 import compile from "../core/compile";
 import toAbsolutePath from "../core/utils/to-absolute-path";
-import validateContext from "../core/utils/validate-context";
 import {
   getCompiledTemplate,
   hasCompiledTemplate,
   setCompiledTemplate,
 } from "../providers/cache";
 import { getConfig } from "../providers/config";
+import validateContext from "./validate-context";
 
 export default function renderFromFile(
   path: string,
@@ -15,7 +15,7 @@ export default function renderFromFile(
 ): string {
   const absolutePath = toAbsolutePath(path);
   const template = readFileSync(absolutePath, "utf-8");
-  const { allowedProps, forbiddenProps, namespaces } = getConfig();
+  const { allowedProps, dev, forbiddenProps, namespaces } = getConfig();
   let compiled: Function;
 
   if (hasCompiledTemplate(absolutePath)) {
@@ -26,7 +26,11 @@ export default function renderFromFile(
       forbiddenProps,
       path: absolutePath,
     });
-    setCompiledTemplate(absolutePath, compiled);
+
+    // Cache only if in non-dev environment
+    if (!dev) {
+      setCompiledTemplate(absolutePath, compiled);
+    }
   }
 
   return compiled(
