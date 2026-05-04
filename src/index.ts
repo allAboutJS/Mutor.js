@@ -1,3 +1,4 @@
+import registerComponent from "./api/register-component";
 import render from "./api/render";
 import renderFromFile from "./api/render-from-file";
 import renderTemplate from "./api/render-template";
@@ -13,4 +14,11 @@ const g = globalThis as any;
 
 g.MUTOR_RENDER = renderFromFile;
 
-export { compile, render, renderFromFile, renderTemplate, validateContext };
+export {
+  compile,
+  registerComponent,
+  render,
+  renderFromFile,
+  renderTemplate,
+  validateContext,
+};
