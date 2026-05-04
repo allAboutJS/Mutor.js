@@ -1,10 +1,11 @@
-import { config, delimiters } from "../core/utils/defaults";
+import { config, delimiters, namespaces } from "../core/utils/defaults";
 import type { MutorConfig, PartialMutorConfig } from "../types/types";
 
 const configProvider = {
   __config: {
     allowedProps: new Set(),
     forbiddenProps: new Set(["__proto__", "constructor", "prototype"]),
+    allowFnCalls: false,
     delimiters: {
       closingTag: "}}",
       openingTag: "{{",
@@ -12,6 +13,7 @@ const configProvider = {
       whitespaceTrim: "~",
     },
     keepOpeningTagEscapeDelimiter: false,
+    namespaces,
   } as MutorConfig,
 
   getConfig(): MutorConfig {
@@ -24,14 +26,18 @@ const configProvider = {
       allowedProps,
       forbiddenProps,
       keepOpeningTagEscapeDelimiter,
+      namespaces: userNamespaces,
+      allowFnCalls,
     } = conf;
 
     this.__config = {
       ...config,
       allowedProps: allowedProps || new Set(),
+      allowFnCalls: allowFnCalls === true,
       forbiddenProps: forbiddenProps || new Set(),
       keepOpeningTagEscapeDelimiter: keepOpeningTagEscapeDelimiter ?? false,
       delimiters: { ...delimiters, ...(overrideDelimeters || {}) },
+      namespaces: { ...(userNamespaces || {}), ...namespaces },
     } as Required<MutorConfig>;
 
     return this.__config;

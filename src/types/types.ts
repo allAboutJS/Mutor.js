@@ -162,6 +162,8 @@ export type PartialMutorConfig = Partial<{
   keepOpeningTagEscapeDelimiter: boolean;
   allowedProps: Set<string>;
   forbiddenProps: Set<string>;
+  namespaces: Record<string, any>;
+  allowFnCalls: boolean;
   delimiters: Partial<{
     openingTag: string;
     closingTag: string;
@@ -174,10 +176,24 @@ export type MutorConfig = {
   keepOpeningTagEscapeDelimiter: boolean;
   allowedProps: Set<string>;
   forbiddenProps: Set<string>;
+  namespaces: Record<string, any>;
+  allowFnCalls: boolean;
   delimiters: {
     openingTag: string;
     closingTag: string;
     whitespaceTrim: string;
     openingTagEscape: string;
   };
+};
+
+export type BuildContext = {
+  scope: string[];
+  forbiddenProps: Set<string>;
+  allowedProps: Set<string>;
+};
+
+export type CompileMetadata = {
+  path: string;
+  allowedProps: Set<string>;
+  forbiddenProps: Set<string>;
 };

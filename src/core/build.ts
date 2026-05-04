@@ -1,5 +1,6 @@
 import { ExprType, LoopType } from "../types/enums";
 import type {
+  BuildContext,
   CallExpr,
   ElseIfExpr,
   Expr,
@@ -9,12 +10,6 @@ import type {
   NamespaceExpr,
   PropAccessExpr,
 } from "../types/types";
-
-interface BuildContext {
-  scope: string[];
-  forbiddenProps: Set<string>;
-  allowedProps: Set<string>;
-}
 
 /**
  * Builds JavaScript code from an AST.
@@ -107,15 +102,15 @@ export default function build(
   function buildPropAccess(expr: PropAccessExpr): string {
     const left = buildExpr(expr.left);
 
-    if (
-      expr.bracketNotation &&
-      expr.right.type !== ExprType.STRING &&
-      expr.right.type !== ExprType.NUMBER
-    ) {
+    if (expr.bracketNotation) {
       // Bracket notation: evaluate the expression and check the resolved value at runtime
       const right = buildExpr(expr.right);
       const optionalChain = expr.optional ? "?." : "";
-      return `${left}${optionalChain}[validateComputedProp(${right})]`;
+
+      return expr.right.type !== ExprType.STRING &&
+        expr.right.type !== ExprType.NUMBER
+        ? `${left}${optionalChain}[${right}]`
+        : `${left}${optionalChain}[validateComputedProp(${right})]`;
     } else {
       // Dot notation: static property name - check at build time
       const propName = (expr.right as IdentExpr).value; // Assuming right is always IDENT in dot notation

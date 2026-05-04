@@ -95,7 +95,11 @@ export default function tokenize(expr: string) {
     accumulateStr();
     accumulateOperator();
 
-    if (!/[a-zA-Z$_0-9\s\t\r\n'"`]/.test(char) && !operators.has(char)) {
+    if (
+      !/[a-zA-Z$_0-9\s\t\r\n'"`]/.test(char) &&
+      !operators.has(char) &&
+      !operators.has(expr[cursor - 1] + char)
+    ) {
       throw {
         message: `Unexpected token '${char}' in expression.`,
         pos: cursor,

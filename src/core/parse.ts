@@ -23,7 +23,11 @@ export default function parse(templateBlock: string) {
 
   const trimmed = inner.trim();
   const isBlock =
-    trimmed.startsWith("for") || trimmed.startsWith("if") || trimmed === "else";
+    trimmed.startsWith("for") ||
+    trimmed.startsWith("if") ||
+    trimmed.startsWith("else");
+  const requiresBlockClose =
+    trimmed.startsWith("for") || trimmed.startsWith("if");
   const isBlockEnd = trimmed === "end";
   const hasContext = trimmed.startsWith("for");
 
@@ -34,5 +38,6 @@ export default function parse(templateBlock: string) {
     isBlock,
     isBlockEnd,
     hasContext,
+    requiresBlockClose,
   };
 }

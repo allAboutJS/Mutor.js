@@ -1,6 +1,6 @@
 import { getConfig } from "../providers/config";
 import { BlockType } from "../types/enums";
-import type { ForExpr } from "../types/types";
+import type { CompileMetadata, ForExpr } from "../types/types";
 import build from "./build";
 import MutorError from "./error";
 import { generateAst } from "./generate-ast";
@@ -15,23 +15,15 @@ import getLineSnapshot from "./utils/get-line-snapshot";
  * @param meta Information about the template.
  * @returns A JS function which can be invoked with a context, and namespaces.
  */
-export default function compile(
-  src: string,
-  meta = {
-    path: "partial://anonymous",
-    allowedProps: getConfig().allowedProps,
-    forbiddenProps: getConfig().forbiddenProps,
-  },
-) {
+export default function compile(src: string, meta: CompileMetadata) {
   const scope: string[] = [];
   const blockOpeningStack: { type: BlockType; pos: number }[] = [];
-  const { delimiters, keepOpeningTagEscapeDelimiter } = getConfig();
+  const { delimiters, keepOpeningTagEscapeDelimiter, allowFnCalls } =
+    getConfig();
 
   // whitespace control
   let trimNext = false,
-    sideToTrim: string | null = null;
-
-  let cursor = 0,
+    cursor = 0,
     body = `
     function validateComputedProp(computed) {
       if (forbiddenProps.has(computed) && !allowedProps.has(computed)) {
@@ -40,13 +32,15 @@ export default function compile(
       return computed;
     }
 
-    var acc = "";
+    var acc = "",
+      current = "";
     `;
 
   while (cursor < src.length) {
     const templateOpenTagIdx = src.indexOf(delimiters.openingTag, cursor);
     if (templateOpenTagIdx === -1) {
-      body += `acc+=\`${src.slice(cursor)}\`;`;
+      body += "acc+=current;\n";
+      body += `current=\`${src.slice(cursor)}\`;`;
       break;
     }
 
@@ -65,15 +59,17 @@ export default function compile(
     }
 
     if (isEscaped()) {
-      body += `acc+=\`${src.slice(
+      body += "acc+=current;\n";
+      body += `current=\`${src.slice(
         cursor,
         keepOpeningTagEscapeDelimiter
           ? templateOpenTagIdx + delimiters.openingTagEscape.length + 1
           : templateOpenTagIdx - delimiters.openingTag.length + 1,
-      )}\`;`;
+      )}\`;\n`;
 
       if (!keepOpeningTagEscapeDelimiter) {
-        body += `acc+=\`${delimiters.openingTag}\`;`;
+        body += "acc+=current;\n";
+        body += `current=\`${delimiters.openingTag}\`;`;
       }
 
       cursor = templateOpenTagIdx + delimiters.openingTag.length;
@@ -82,12 +78,13 @@ export default function compile(
 
     const rawText = src.slice(cursor, templateOpenTagIdx);
     if (rawText) {
-      if (trimNext && sideToTrim === "left") {
-        body += `acc+=\`${rawText.trimStart()}\`;\n`;
+      if (trimNext) {
+        body += "acc+=current.trimStart();\n";
+        body += `current=\`${rawText}\`;\n`;
         trimNext = false;
-        sideToTrim = null;
       } else {
-        body += `acc+=\`${rawText}\`;\n`;
+        body += "acc+=current;\n";
+        body += `current=\`${rawText}\`;\n`;
       }
     }
 
@@ -118,24 +115,28 @@ export default function compile(
       templateEndTagIdx + delimiters.closingTag.length,
     );
 
-    cursor = templateEndTagIdx + 2;
-    const { inner, leftTrim, isBlock, isBlockEnd, hasContext, rightTrim } =
-      parse(template);
+    cursor = templateEndTagIdx + delimiters.closingTag.length;
+    const {
+      inner,
+      leftTrim,
+      isBlock,
+      isBlockEnd,
+      hasContext,
+      rightTrim,
+      requiresBlockClose,
+    } = parse(template);
 
     if (leftTrim) {
-      if (scope.length) {
-        trimNext = true;
-        sideToTrim = "left";
-      } else {
-        body += "acc=acc.trimEnd();\n";
-      }
+      body += "acc+=current.trimEnd();\n";
+      body += 'current="";\n';
     }
 
     try {
       const tokens = tokenize(inner);
-      const ast = generateAst(tokens);
+      const ast = generateAst(tokens, { allowFnCalls });
 
-      if (hasContext) {
+      // For loop
+      if (isBlock && requiresBlockClose && hasContext) {
         scope.push((ast as ForExpr).variable);
         blockOpeningStack.push({
           type: BlockType.LOOP,
@@ -143,7 +144,8 @@ export default function compile(
         });
       }
 
-      if (isBlock && !hasContext) {
+      // If conditional block
+      if (isBlock && requiresBlockClose && !hasContext) {
         blockOpeningStack.push({
           type: BlockType.NON_LOOP,
           pos: templateOpenTagIdx,
@@ -171,21 +173,20 @@ export default function compile(
         scope,
       });
 
-      // APPLY DEFERRED RIGHT TRIM BEFORE PROCESSING NEXT TOKEN
-      if (trimNext && sideToTrim === "left") {
-        body += "acc=acc.trimEnd();\n";
-        trimNext = false;
-        sideToTrim = null;
-      }
-
       if (isBlock || isBlockEnd) {
+        body += "acc+=current;\ncurrent='';\n";
         body += js;
       } else {
-        body += `acc+=""+(${js}) ?? "";\n`;
+        body += "acc+=current;\n";
+        body += `current=${js};\n`;
+
+        if (trimNext) {
+          body += "acc+=current.trimStart();\ncurrent='';\n";
+          trimNext = false;
+        }
 
         if (rightTrim) {
           trimNext = true;
-          sideToTrim = "left";
         }
       }
     } catch (e) {
@@ -243,7 +244,7 @@ export default function compile(
     );
   }
 
-  body += `\nreturn acc;`;
+  body += `acc+=current;\nreturn acc;`;
   return new Function(
     "ctx",
     "namespaces",

@@ -25,7 +25,7 @@ import { getTokenTypeWords } from "./utils/get-token-type-words";
  */
 export function generateAst(
   tokens: Token[],
-  config = { allowFnCalls: false },
+  config: { allowFnCalls: boolean },
 ): Expr {
   let cursor = 0;
 
