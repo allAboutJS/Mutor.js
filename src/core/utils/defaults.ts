@@ -186,4 +186,18 @@ export const namespaces = {
       return Boolean(value);
     },
   },
+
+  Mutor: {
+    render(path: string, ctx: Record<any, any>) {
+      const g = globalThis as any;
+
+      if (typeof g.MUTOR_RENDER !== "function") {
+        throw new Error(
+          "[Mutor] Render engine not initialized in this environment.",
+        );
+      }
+
+      return g.MUTOR_RENDER(path, ctx);
+    },
+  },
 };

@@ -9,4 +9,8 @@ export * from "./providers/config";
 export * from "./types/enums";
 export * from "./types/types";
 
+const g = globalThis as any;
+
+g.MUTOR_RENDER = renderFromFile;
+
 export { compile, render, renderFromFile, renderTemplate, validateContext };

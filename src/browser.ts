@@ -7,4 +7,8 @@ export * from "./providers/config";
 export * from "./types/enums";
 export * from "./types/types";
 
+const g = globalThis as any;
+
+g.MUTOR_RENDER = renderTemplate;
+
 export { compile, render, renderTemplate };
