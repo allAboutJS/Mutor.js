@@ -2,6 +2,7 @@ import { config, delimiters, namespaces } from "../core/utils/defaults";
 import type { MutorConfig, PartialMutorConfig } from "../types/types";
 
 const defaultConfig: MutorConfig = {
+  autoEscape: true,
   allowedProps: new Set(),
   forbiddenProps: new Set(["__proto__", "constructor", "prototype"]),
   allowFnCalls: false,
@@ -30,6 +31,7 @@ const configProvider = {
 
   setConfig(conf: PartialMutorConfig): MutorConfig {
     const {
+      autoEscape,
       delimiters: overrideDelimeters,
       allowedProps,
       forbiddenProps,
@@ -41,11 +43,15 @@ const configProvider = {
 
     this.__config = {
       ...config,
+      autoEscape: autoEscape === true ? true : autoEscape !== false,
       allowedProps: allowedProps || new Set(),
-      allowFnCalls: allowFnCalls === true,
-      dev: dev === true,
+      allowFnCalls: !!allowFnCalls,
+      dev: dev === true ? true : dev !== false,
       forbiddenProps: forbiddenProps || new Set(),
-      keepOpeningTagEscapeDelimiter: keepOpeningTagEscapeDelimiter ?? false,
+      keepOpeningTagEscapeDelimiter:
+        keepOpeningTagEscapeDelimiter === true
+          ? true
+          : keepOpeningTagEscapeDelimiter !== false,
       delimiters: { ...delimiters, ...(overrideDelimeters || {}) },
       namespaces: { ...(userNamespaces || {}), ...namespaces },
     };

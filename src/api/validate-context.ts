@@ -1,7 +1,12 @@
 const OBJECT = "object";
 export const MUTOR_SAFE = Symbol("__mutor_safe_context");
 
-export default function validateContext(ctx: Record<any, any>) {
+export default function validateContext(ctx: any) {
+  // Allow non object contexts
+  if (!ctx || typeof ctx !== OBJECT) {
+    return ctx;
+  }
+
   if (MUTOR_SAFE in ctx) {
     return ctx;
   }

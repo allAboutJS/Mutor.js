@@ -27,7 +27,8 @@ export default function generateAst(
   tokens: Token[],
   config: { allowFnCalls: boolean },
 ): Expr {
-  let cursor = 0;
+  let cursor = 0,
+    generatingNamespace = false;
 
   /**
    * Asserts that a token at the cursor's current position is of the same type and value as the function arguments.
@@ -241,7 +242,7 @@ export default function generateAst(
       if (token?.type === TokenType.OPERATOR && token?.value === "(") {
         cursor++; // Skip the opening parentheses
 
-        if (!config.allowFnCalls) {
+        if (!generatingNamespace && !config.allowFnCalls) {
           throw {
             message: "Function calls are not allowed.",
             pos: tokens[cursor - 1].pos,
@@ -268,7 +269,7 @@ export default function generateAst(
         cursor++; // Skip ?.
         cursor++; // Skip (
 
-        if (!config.allowFnCalls) {
+        if (!generatingNamespace && !config.allowFnCalls) {
           throw {
             message: "Function calls are not allowed.",
             pos: tokens[cursor - 1].pos,
@@ -311,7 +312,10 @@ export default function generateAst(
         }
 
         if (isNamespace) {
+          generatingNamespace = true;
+
           const right = parsePrimaryExpr();
+
           left = {
             type: ExprType.NAMESPACE,
             left,
@@ -372,6 +376,7 @@ export default function generateAst(
       }
     }
 
+    generatingNamespace = false;
     return left;
   }
 

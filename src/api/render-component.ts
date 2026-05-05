@@ -1,15 +1,25 @@
-import compile from "../core/compile";
 import escapeFn from "../core/utils/escape-fn";
 import validateComputedProp from "../core/utils/validate-computed-props";
-import { getCurrentContext, setCurrentContext } from "../providers/cache";
+import {
+  getCompiledTemplate,
+  getCurrentContext,
+  hasCompiledTemplate,
+  setCurrentContext,
+} from "../providers/cache";
 import { getConfig } from "../providers/config";
 import validateContext from "./validate-context";
 
-export default function render(
-  template: string,
+export default function renderComponent(
+  name: string,
   ctx: Record<any, any>,
 ): string {
   const { allowedProps, forbiddenProps, namespaces } = getConfig();
+
+  if (!hasCompiledTemplate(name)) {
+    throw new Error(`No template was registered with the name '${name}'`);
+  }
+
+  const compiled = getCompiledTemplate(name)!;
   const prevContext = getCurrentContext();
   const safeContext = validateContext(ctx);
 
@@ -18,9 +28,7 @@ export default function render(
     setCurrentContext(safeContext);
   }
 
-  const result = compile(template, {
-    path: "anonymous",
-  })(
+  const result = compiled(
     safeContext,
     namespaces,
     allowedProps,

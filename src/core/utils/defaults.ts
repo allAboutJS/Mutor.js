@@ -1,32 +1,20 @@
-/**
- * Default configuration options for the compiler.
- */
+import { getCurrentContext } from "../../providers/cache";
+
+// Default configuration options for the compiler.
 export const config = {
-  /**
-   * Tells the compiler whether to include the opening tag escape delimiter in the output.
-   */
+  // Tells the compiler whether to include the opening tag escape delimiter in the output.
   keepOpeningTagEscapeDelimiter: false,
 };
 
-/**
- * Default delimiters for template blocks.
- */
+// Default delimiters for template blocks.
 export const delimiters = {
-  /**
-   * Defines the beginning of a template block.
-   */
+  // Defines the beginning of a template block.
   openingTag: "{{",
-  /**
-   * Defines the end of a template block.
-   */
+  // Defines the end of a template block.
   closingTag: "}}",
-  /**
-   * Specifies whether to trim whitespace before or after template blocks.
-   */
+  // Specifies whether to trim whitespace before or after template blocks.
   whitespaceTrim: "~",
-  /**
-   * Tells the compiler that the following text should not be treated as an template block opening tag.
-   */
+  // Tells the compiler that the following text should not be treated as an template block opening tag.
   openingTagEscape: "\\",
 };
 
@@ -188,7 +176,7 @@ export const namespaces = {
   },
 
   Mutor: {
-    render(path: string, ctx: Record<any, any>) {
+    include(path: string, ctx: Record<any, any>) {
       const g = globalThis as any;
 
       if (typeof g.MUTOR_RENDER !== "function") {
@@ -197,7 +185,11 @@ export const namespaces = {
         );
       }
 
-      return g.MUTOR_RENDER(path, ctx);
+      return g.MUTOR_RENDER(path, ctx ?? getCurrentContext());
+    },
+
+    get $$CONTEXT() {
+      return getCurrentContext();
     },
   },
 };

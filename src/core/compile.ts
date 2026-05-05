@@ -18,28 +18,24 @@ import getLineSnapshot from "./utils/get-line-snapshot";
 export default function compile(src: string, meta: CompileMetadata) {
   const scope: string[] = [];
   const blockOpeningStack: { type: BlockType; pos: number }[] = [];
-  const { delimiters, keepOpeningTagEscapeDelimiter, allowFnCalls } =
-    getConfig();
+  const {
+    delimiters,
+    keepOpeningTagEscapeDelimiter,
+    allowFnCalls,
+    allowedProps,
+    forbiddenProps,
+    autoEscape,
+  } = getConfig();
 
   // whitespace control
   let trimNext = false,
     cursor = 0,
-    body = `
-    function validateComputedProp(computed) {
-      if (forbiddenProps.has(computed) && !allowedProps.has(computed)) {
-        throw new Error(\`Forbidden property access. Access to this computed property "\${computed}" is forbidden.\`);
-      }
-      return computed;
-    }
-
-    var acc = "",
-      current = "";
-    `;
+    body = `let acc="",current="";`;
 
   while (cursor < src.length) {
     const templateOpenTagIdx = src.indexOf(delimiters.openingTag, cursor);
     if (templateOpenTagIdx === -1) {
-      body += "acc+=current;\n";
+      body += "acc+=current;";
       body += `current=\`${src.slice(cursor)}\`;`;
       break;
     }
@@ -59,16 +55,16 @@ export default function compile(src: string, meta: CompileMetadata) {
     }
 
     if (isEscaped()) {
-      body += "acc+=current;\n";
+      body += "acc+=current;";
       body += `current=\`${src.slice(
         cursor,
         keepOpeningTagEscapeDelimiter
           ? templateOpenTagIdx + delimiters.openingTagEscape.length + 1
           : templateOpenTagIdx - delimiters.openingTag.length + 1,
-      )}\`;\n`;
+      )}\`;`;
 
       if (!keepOpeningTagEscapeDelimiter) {
-        body += "acc+=current;\n";
+        body += "acc+=current;";
         body += `current=\`${delimiters.openingTag}\`;`;
       }
 
@@ -79,12 +75,12 @@ export default function compile(src: string, meta: CompileMetadata) {
     const rawText = src.slice(cursor, templateOpenTagIdx);
     if (rawText) {
       if (trimNext) {
-        body += "acc+=current.trimStart();\n";
-        body += `current=\`${rawText}\`;\n`;
+        body += "acc+=current.trimStart();";
+        body += `current=\`${rawText}\`;`;
         trimNext = false;
       } else {
-        body += "acc+=current;\n";
-        body += `current=\`${rawText}\`;\n`;
+        body += "acc+=current;";
+        body += `current=\`${rawText}\`;`;
       }
     }
 
@@ -127,8 +123,8 @@ export default function compile(src: string, meta: CompileMetadata) {
     } = parse(template);
 
     if (leftTrim) {
-      body += "acc+=current.trimEnd();\n";
-      body += 'current="";\n';
+      body += "acc+=current.trimEnd();";
+      body += 'current="";';
     }
 
     try {
@@ -168,20 +164,20 @@ export default function compile(src: string, meta: CompileMetadata) {
       }
 
       const js = build(ast, {
-        allowedProps: meta.allowedProps,
-        forbiddenProps: meta.forbiddenProps,
+        allowedProps,
+        forbiddenProps,
         scope,
       });
 
       if (isBlock || isBlockEnd) {
-        body += "acc+=current;\ncurrent='';\n";
+        body += "acc+=current;current='';";
         body += js;
       } else {
-        body += "acc+=current;\n";
-        body += `current=${js};\n`;
+        body += "acc+=current;";
+        body += autoEscape ? `current=escapeFn(${js});` : `current=${js};`;
 
         if (trimNext) {
-          body += "acc+=current.trimStart();\ncurrent='';\n";
+          body += "acc+=current.trimStart();current='';";
           trimNext = false;
         }
 
@@ -244,12 +240,14 @@ export default function compile(src: string, meta: CompileMetadata) {
     );
   }
 
-  body += `acc+=current;\nreturn acc;`;
+  body += `acc+=current;return acc;`;
   return new Function(
     "ctx",
     "namespaces",
     "allowedProps",
     "forbiddenProps",
+    "escapeFn",
+    "validateComputedProps",
     body,
   );
 }

@@ -1,7 +1,8 @@
 import registerComponent from "./api/register-component";
 import render from "./api/render";
-import renderTemplate from "./api/render-template";
+import renderComponent from "./api/render-component";
 import compile from "./core/compile";
+import validateComputedProp from "./core/utils/validate-computed-props";
 
 export * from "./providers/cache";
 export * from "./providers/config";
@@ -10,6 +11,12 @@ export * from "./types/types";
 
 const g = globalThis as any;
 
-g.MUTOR_RENDER = renderTemplate;
+g.MUTOR_RENDER = renderComponent;
 
-export { compile, registerComponent, render, renderTemplate };
+export {
+  compile,
+  registerComponent,
+  render,
+  renderComponent,
+  validateComputedProp,
+};

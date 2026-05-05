@@ -31,7 +31,7 @@ export default function build(
   function buildExpr(expr: Expr): string {
     switch (expr.type) {
       case ExprType.END:
-        return "}\n";
+        return "}";
 
       case ExprType.NUMBER:
         return expr.value;
@@ -76,7 +76,7 @@ export default function build(
         return buildForLoop(expr);
 
       case ExprType.ELSE:
-        return "\n} else {\n";
+        return "} else {";
 
       case ExprType.IF:
         return buildIfBlock(expr);
@@ -110,7 +110,7 @@ export default function build(
       return expr.right.type !== ExprType.STRING &&
         expr.right.type !== ExprType.NUMBER
         ? `${left}${optionalChain}[${right}]`
-        : `${left}${optionalChain}[validateComputedProp(${right})]`;
+        : `${left}${optionalChain}[validateComputedProps(${right}, allowedProps, forbiddenProps)]`;
     } else {
       // Dot notation: static property name - check at build time
       const propName = (expr.right as IdentExpr).value; // Assuming right is always IDENT in dot notation
@@ -138,17 +138,17 @@ export default function build(
 
   function buildForLoop(expr: ForExpr) {
     const { iterable, loopType, variable } = expr;
-    return `for (const ${variable} ${loopType === LoopType.IN ? "in" : "of"} ${build(iterable, context)}) {\n`;
+    return `for(const ${variable} ${loopType === LoopType.IN ? "in" : "of"} ${build(iterable, context)}){`;
   }
 
   function buildIfBlock(expr: IfExpr) {
     const { condition } = expr;
-    return `if (${build(condition, context)}) {\n`;
+    return `if(${build(condition, context)}){`;
   }
 
   function buildElseIfBlock(expr: ElseIfExpr) {
     const { condition } = expr;
-    return `} else if (${build(condition, context)}) {\n`;
+    return `}else if(${build(condition, context)}){`;
   }
 
   return buildExpr(ast);

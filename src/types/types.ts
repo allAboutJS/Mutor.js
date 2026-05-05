@@ -165,6 +165,7 @@ export interface MutorConfig {
   forbiddenProps: Set<string>;
   namespaces: Record<string, any>;
   allowFnCalls: boolean;
+  autoEscape: boolean;
   delimiters: {
     openingTag: string;
     closingTag: string;
@@ -185,6 +186,4 @@ export type BuildContext = {
 
 export type CompileMetadata = {
   path: string;
-  allowedProps: Set<string>;
-  forbiddenProps: Set<string>;
 };

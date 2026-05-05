@@ -60,3 +60,11 @@ export const multiplicativeOperators = new Set(["*", "/", "%"]);
 export const propertyAccessOperators = new Set([".", "?.", "[", "::"]);
 
 export const unaryOperators = new Set(["-", "+", "!"]);
+
+export const ESCAPE_MAP: Record<string, string> = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#39;",
+};
