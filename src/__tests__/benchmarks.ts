@@ -9,7 +9,7 @@ import {
   render,
   renderComponent,
   setConfig,
-} from "../browser";
+} from "../../dist/index";
 
 setConfig({ autoEscape: true, allowFnCalls: true });
 
