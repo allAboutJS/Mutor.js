@@ -14,7 +14,7 @@ export default defineConfig([
   {
     entry: ["src/browser.ts"],
     outDir: "dist/browser",
-    format: ["esm"],
+    format: ["esm", "cjs"],
     dts: true,
     sourcemap: true,
     clean: true,
