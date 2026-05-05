@@ -4,12 +4,12 @@ import { Eta } from "eta";
 import Handlebars from "handlebars";
 import nunjucks from "nunjucks";
 import {
-  compile as mutorCompile,
+  compile,
   registerComponent,
   render,
   renderComponent,
   setConfig,
-} from "../../dist/browser/browser";
+} from "../browser";
 
 setConfig({ autoEscape: true, allowFnCalls: true });
 
@@ -153,7 +153,7 @@ console.log("=========================================\n");
 
 new Benchmark.Suite("Compilation")
   .add("Mutor.js Compile", () => {
-    mutorCompile(mutorTemplate, { path: "template" });
+    compile(mutorTemplate, { path: "template" });
   })
   .add("Eta Compile", () => {
     eta.compile(etaTemplate);
