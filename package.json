@@ -1,7 +1,7 @@
 {
   "name": "mutor-js",
   "version": "1.0.2",
-  "description": "A high-performance, AST-based logic engine for secure templating.",
+  "description": "A high-performance engine for secure templating.",
   "homepage": "https://github.com/allAboutJS/Mutor.js#readme",
   "bugs": {
     "url": "https://github.com/allAboutJS/Mutor.js/issues"
