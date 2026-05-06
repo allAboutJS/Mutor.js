@@ -1,4 +1,4 @@
-import { ESCAPE_MAP } from "../constants";
+import { ESCAPE_MAP } from "../core/constants";
 
 /**
  * Escapes HTML special characters in a string.

@@ -3,15 +3,9 @@ import ejs from "ejs";
 import { Eta } from "eta";
 import Handlebars from "handlebars";
 import nunjucks from "nunjucks";
-import {
-  compile,
-  registerComponent,
-  render,
-  renderComponent,
-  setConfig,
-} from "../../dist/index";
+import Mutor from "../../dist/server";
 
-setConfig({ autoEscape: true, allowFnCalls: true });
+const tEngine = new Mutor({ autoEscape: false });
 
 function createComplexCtx() {
   return {
@@ -137,10 +131,10 @@ const njTemplate = `
   </ul>
 </div>`;
 
-registerComponent("template", mutorTemplate);
+tEngine.registerComponent("template", mutorTemplate);
 
-const eta = new Eta({ autoEscape: true });
-nunjucks.configure({ autoescape: true });
+const eta = new Eta({ autoEscape: false });
+nunjucks.configure({ autoescape: false });
 
 const etaRender = eta.compile(etaTemplate);
 const ejsRender = ejs.compile(ejsTemplate);
@@ -153,7 +147,7 @@ console.log("=========================================\n");
 
 new Benchmark.Suite("Compilation")
   .add("Mutor.js Compile", () => {
-    compile(mutorTemplate, { path: "template" });
+    tEngine.compile(mutorTemplate);
   })
   .add("Eta Compile", () => {
     eta.compile(etaTemplate);
@@ -175,7 +169,7 @@ new Benchmark.Suite("Compilation")
 
 new Benchmark.Suite("Execution")
   .add("Mutor.js Execute", () => {
-    renderComponent("template", ctx);
+    tEngine.renderComponent("template", ctx);
   })
   .add("Eta Execute", () => {
     etaRender.call(eta, ctx);
@@ -197,7 +191,7 @@ new Benchmark.Suite("Execution")
 
 new Benchmark.Suite("Full Pipeline")
   .add("Mutor.js Full", () => {
-    render(mutorTemplate, ctx);
+    tEngine.render(mutorTemplate, ctx);
   })
   .add("Eta Full", () => {
     const r = eta.compile(etaTemplate);

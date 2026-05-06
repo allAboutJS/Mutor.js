@@ -7,6 +7,7 @@ import type {
   IfExpr,
   Token,
 } from "../types/types";
+import { getTokenTypeWords } from "../utils/get-token-type-words";
 import {
   additiveOperators,
   comparisonOperators,
@@ -15,7 +16,6 @@ import {
   propertyAccessOperators,
   unaryOperators,
 } from "./constants";
-import { getTokenTypeWords } from "./utils/get-token-type-words";
 
 /**
  * Generates an abstract syntax tree from a stream of tokens. Validating structure as it does so.

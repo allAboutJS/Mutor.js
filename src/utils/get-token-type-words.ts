@@ -1,4 +1,4 @@
-import { TokenType } from "../../types/enums";
+import { TokenType } from "../types/enums";
 
 export function getTokenTypeWords(type: TokenType) {
   switch (type) {

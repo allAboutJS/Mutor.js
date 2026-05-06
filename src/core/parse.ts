@@ -1,10 +1,13 @@
-import { delimiters } from "./utils/defaults";
+import type { MutorConfig } from "../types/types";
 
 /**
  * Parses a given template block by analyzing it for syntax correctness and whitespace control.
  * @param templateBlock A block of template code (`{{~ for user of users ~}}`)
  */
-export default function parse(templateBlock: string) {
+export default function parse(
+  templateBlock: string,
+  { delimiters }: Pick<MutorConfig, "delimiters">,
+) {
   const openingTagWithWhitespaceCtrl = `${delimiters.openingTag}${delimiters.whitespaceTrim}`;
   const closingTagWithWhitespaceCtrl = `${delimiters.whitespaceTrim}${delimiters.closingTag}`;
 

@@ -1,4 +1,4 @@
-import constructPointer from "./utils/construct-pointer";
+import constructPointer from "../utils/construct-pointer";
 
 export default class MutorError extends Error {
   name = "MutorError";

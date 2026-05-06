@@ -159,13 +159,19 @@ export type Expr =
   | NamespaceExpr;
 
 export interface MutorConfig {
-  dev: boolean;
+  cache: {
+    active: boolean;
+    maxSize: number;
+  };
   keepOpeningTagEscapeDelimiter: boolean;
   allowedProps: Set<string>;
   forbiddenProps: Set<string>;
-  namespaces: Record<string, any>;
   allowFnCalls: boolean;
   autoEscape: boolean;
+  build: {
+    include: Set<string>;
+    exclude: Set<string>;
+  };
   delimiters: {
     openingTag: string;
     closingTag: string;
@@ -176,6 +182,11 @@ export interface MutorConfig {
 
 export type PartialMutorConfig = Partial<Omit<MutorConfig, "delimiters">> & {
   delimiters?: Partial<MutorConfig["delimiters"]>;
+  cache?: Partial<MutorConfig["cache"]>;
+  build?: {
+    include?: Set<string>;
+    exclude?: Set<string>;
+  };
 };
 
 export type BuildContext = {

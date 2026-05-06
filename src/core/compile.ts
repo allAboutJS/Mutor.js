@@ -1,13 +1,12 @@
-import { getConfig } from "../providers/config";
 import { BlockType } from "../types/enums";
-import type { CompileMetadata, ForExpr } from "../types/types";
+import type { CompileMetadata, ForExpr, MutorConfig } from "../types/types";
+import getLineAndColumnNumbers from "../utils/get-line-and-column-nums";
+import getLineSnapshot from "../utils/get-line-snapshot";
 import build from "./build";
 import MutorError from "./error";
 import generateAst from "./generate-ast";
 import parse from "./parse";
 import tokenize from "./tokenize";
-import getLineAndColumnNumbers from "./utils/get-line-and-column-nums";
-import getLineSnapshot from "./utils/get-line-snapshot";
 
 /**
  * Compiles a given template to native JS function which can be invoked with the required arguments.
@@ -15,7 +14,11 @@ import getLineSnapshot from "./utils/get-line-snapshot";
  * @param meta Information about the template.
  * @returns A JS function which can be invoked with a context, and namespaces.
  */
-export default function compile(src: string, meta: CompileMetadata) {
+export default function compile(
+  src: string,
+  config: MutorConfig,
+  meta: CompileMetadata,
+) {
   const scope: string[] = [];
   const blockOpeningStack: { type: BlockType; pos: number }[] = [];
   const {
@@ -25,7 +28,7 @@ export default function compile(src: string, meta: CompileMetadata) {
     allowedProps,
     forbiddenProps,
     autoEscape,
-  } = getConfig();
+  } = config;
 
   // whitespace control
   let trimNext = false,
@@ -120,7 +123,7 @@ export default function compile(src: string, meta: CompileMetadata) {
       hasContext,
       rightTrim,
       requiresBlockClose,
-    } = parse(template);
+    } = parse(template, { delimiters });
 
     if (leftTrim) {
       body += "acc+=current.trimEnd();";

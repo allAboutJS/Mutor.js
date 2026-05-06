@@ -10,11 +10,10 @@ export default defineConfig([
     clean: true,
     minify: true,
     target: "es2020",
+    platform: "neutral",
   },
   {
-    entry: {
-      browser: "src/browser.ts",
-    },
+    entry: ["src/server.ts"],
     outDir: "dist",
     format: ["esm", "cjs"],
     dts: true,
@@ -22,6 +21,6 @@ export default defineConfig([
     clean: false,
     minify: true,
     target: "es2020",
-    platform: "browser",
+    platform: "node",
   },
 ]);
