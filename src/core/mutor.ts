@@ -7,6 +7,7 @@ import { defaultConfig, namespaces } from "./constants";
 
 export default class Mutor {
   protected __currentRenderedPath = "";
+  protected __includeStack = new Set<string>();
   protected __cacheSize = 0;
   protected __config: MutorConfig = { ...defaultConfig };
   protected __compiledTemplatesMap: Map<
@@ -18,17 +19,30 @@ export default class Mutor {
     ...namespaces,
     Mutor: {
       include: (path: string, ctx: Record<any, any>) => {
-        return this.renderComponent(path, ctx ?? this.__currentContext);
-      },
+        if (this.__includeStack.has(path)) {
+          throw new Error(
+            `Circular include detected:\n${Array.from(this.__includeStack).join("\n")}\n${path}`,
+          );
+        }
 
-      get $$context() {
-        return this.__currentContext;
+        try {
+          this.__includeStack.add(path);
+          return this.renderComponent(path, ctx ?? this.__currentContext);
+        } finally {
+          this.__includeStack.delete(path);
+        }
       },
     },
   };
 
   constructor(config: PartialMutorConfig) {
     this.addConfig(config);
+    // Provide access to the currenct context via template
+    Object.defineProperty(this.__namespaces.Mutor, "$$context", {
+      get: () => {
+        return this.__currentContext;
+      },
+    });
   }
 
   addConfig(conf: PartialMutorConfig): MutorConfig {

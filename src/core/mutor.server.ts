@@ -18,10 +18,24 @@ export default class Mutor extends MutorBase {
   constructor(config: PartialMutorConfig) {
     super(config);
     this.__namespaces.Mutor.include = (path: string, context: any) => {
-      return this.renderFromFile(
-        toAbsolutePath(this.__currentRenderedPath, path),
-        context ?? this.__currentContext,
-      );
+      const resolvedPath = toAbsolutePath(this.__currentRenderedPath, path);
+
+      if (this.__includeStack.has(resolvedPath)) {
+        throw new Error(
+          `Circular include detected:\n${Array.from(this.__includeStack).join("\n")}\n${resolvedPath}`,
+        );
+      }
+
+      try {
+        this.__includeStack.add(resolvedPath);
+
+        return this.renderFromFile(
+          resolvedPath,
+          context ?? this.__currentContext,
+        );
+      } finally {
+        this.__includeStack.delete(resolvedPath);
+      }
     };
   }
 
