@@ -12,6 +12,7 @@ import escapeFn from "../utils/escape-fn";
 import toAbsolutePath from "../utils/to-absolute-path";
 import validateComputedProp from "../utils/validate-computed-prop";
 import validateContext from "../utils/validate-context";
+import { MutorError } from "./error";
 import MutorBase from "./mutor";
 
 export default class Mutor extends MutorBase {
@@ -21,7 +22,7 @@ export default class Mutor extends MutorBase {
       const resolvedPath = toAbsolutePath(this.__currentRenderedPath, path);
 
       if (this.__includeStack.has(resolvedPath)) {
-        throw new Error(
+        throw new MutorError(
           `Circular include detected:\n${Array.from(this.__includeStack).join("\n")}\n${resolvedPath}`,
         );
       }

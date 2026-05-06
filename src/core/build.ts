@@ -10,6 +10,7 @@ import type {
   NamespaceExpr,
   PropAccessExpr,
 } from "../types/types";
+import { MutorError } from "./error";
 
 /**
  * Builds JavaScript code from an AST.
@@ -85,7 +86,9 @@ export default function build(
         return buildElseIfBlock(expr);
 
       default:
-        throw new Error(`Unsupported expression type: ${(expr as any).type}`);
+        throw new MutorError(
+          `Unsupported expression type: ${(expr as any).type}`,
+        );
     }
   }
 

@@ -4,6 +4,7 @@ import validateComputedProp from "../utils/validate-computed-prop";
 import validateContext from "../utils/validate-context";
 import compile from "./compile";
 import { defaultConfig, namespaces } from "./constants";
+import { MutorError } from "./error";
 
 export default class Mutor {
   protected __currentRenderedPath = "";
@@ -20,7 +21,7 @@ export default class Mutor {
     Mutor: {
       include: (path: string, ctx: Record<any, any>) => {
         if (this.__includeStack.has(path)) {
-          throw new Error(
+          throw new MutorError(
             `Circular include detected:\n${Array.from(this.__includeStack).join("\n")}\n${path}`,
           );
         }
@@ -117,7 +118,9 @@ export default class Mutor {
 
   renderComponent(identifier: string, context: any): string {
     if (!this.__compiledTemplatesMap.has(identifier)) {
-      throw new Error(`No template exists with the identifier '${identifier}'`);
+      throw new MutorError(
+        `No template exists with the identifier '${identifier}'`,
+      );
     }
 
     const prevRenderComponentIdentifier = this.__currentRenderedPath;
@@ -147,7 +150,7 @@ export default class Mutor {
 
     if (this.__cacheSize + templateSize > this.__config.cache.maxSize) {
       if (!this.createEntrySpaceForTemplate(templateSize)) {
-        throw new Error(
+        throw new MutorError(
           `The template for the component '${identifier}' is too large. Consider increasing 'cache.maxSize' in the config`,
         );
       }

@@ -4,20 +4,10 @@
  * @param idx The index to find its line number.
  */
 export default function getLineAndColumnNumbers(str: string, idx: number) {
-  let line = 1,
-    lineIndex = 0;
-
-  while (lineIndex < str.length) {
-    const prevNewlineIdx = lineIndex;
-    lineIndex = str.indexOf("\n", lineIndex);
-    if (lineIndex > idx || lineIndex === -1) {
-      lineIndex = prevNewlineIdx;
-      break;
-    }
-
-    line++;
-    lineIndex++;
-  }
+  const lines = str.slice(0, idx).split("\n");
+  const line = lines.length;
+  // The index where the current line starts
+  const lineIndex = str.lastIndexOf("\n", idx - 1) + 1;
 
   return { line, lineIndex };
 }

@@ -1,19 +1,39 @@
 import constructPointer from "../utils/construct-pointer";
 
-export default class MutorError extends Error {
-  name = "MutorError";
+export class MutorError extends Error {
+  public name = "MutorError";
+  constructor(message: string) {
+    super(message);
+    Object.setPrototypeOf(this, MutorError.prototype);
+  }
+}
+
+export class MutorCompilerError extends MutorError {
+  public name = "MutorCompilerError";
 
   constructor(
     message: string,
     line: number,
     lineText: string,
-    column: number,
+    column: number, // 0-indexed column from snapshot
     file: string,
   ) {
-    super(message);
-    console.log(`Error in "${file}:${line}:${column}"`);
-    if (line > 1) console.log(line - 1, "|", "...");
-    console.log(line, "|", lineText);
-    console.log(constructPointer(column, 4));
+    // Dynamic gutter width for alignment
+    const gutterWidth = line.toString().length + 2;
+    let report = `${message}\n\n`;
+
+    report += `at ${file}:${line}:${column + 1}\n`;
+
+    // Line snippet with gutter
+    if (line > 1) {
+      report += `${(line - 1).toString().padStart(gutterWidth - 2)} | ...\n`;
+    }
+
+    report += `${line} | ${lineText}\n`;
+    // Visual Pointer
+    report += constructPointer(column, gutterWidth);
+
+    super(report);
+    Object.setPrototypeOf(this, MutorCompilerError.prototype);
   }
 }

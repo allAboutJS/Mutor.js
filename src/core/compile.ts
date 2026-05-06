@@ -3,7 +3,7 @@ import type { CompileMetadata, ForExpr, MutorConfig } from "../types/types";
 import getLineAndColumnNumbers from "../utils/get-line-and-column-nums";
 import getLineSnapshot from "../utils/get-line-snapshot";
 import build from "./build";
-import MutorError from "./error";
+import { MutorCompilerError } from "./error";
 import generateAst from "./generate-ast";
 import parse from "./parse";
 import tokenize from "./tokenize";
@@ -94,7 +94,7 @@ export default function compile(
         templateOpenTagIdx,
       );
 
-      throw new MutorError(
+      throw new MutorCompilerError(
         "No closing tag found.",
         line,
         lineText,
@@ -183,7 +183,7 @@ export default function compile(
         lineIndex,
         templateOpenTagIdx,
       );
-      throw new MutorError(
+      throw new MutorCompilerError(
         message,
         line,
         lineText,
@@ -201,7 +201,7 @@ export default function compile(
     const lastPos = blockOpeningStack.pop()?.pos as number;
     const { line, lineIndex } = getLineAndColumnNumbers(src, lastPos);
     const { line: lineText, pos } = getLineSnapshot(src, lineIndex, lastPos);
-    throw new MutorError(
+    throw new MutorCompilerError(
       "Unclosed block detected.",
       line,
       lineText,
