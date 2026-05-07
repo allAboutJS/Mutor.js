@@ -30,17 +30,14 @@ export default class Mutor extends MutorBase {
       try {
         this.__includeStack.add(resolvedPath);
 
-        return this.renderFromFile(
-          resolvedPath,
-          context ?? this.__currentContext,
-        );
+        return this.renderFile(resolvedPath, context ?? this.__currentContext);
       } finally {
         this.__includeStack.delete(resolvedPath);
       }
     };
   }
 
-  renderFromFile(path: string, context: any): string {
+  renderFile(path: string, context: any): string {
     const absolutePath = toAbsolutePath(path);
     let compiled: Function;
 
@@ -62,15 +59,19 @@ export default class Mutor extends MutorBase {
       if (this.__config.cache.active) {
         const templateSize = template.length * 2 + 500; // Approximate byte size
 
-        if (
-          this.__cacheSize + templateSize > this.__config.cache.maxSize &&
-          this.createEntrySpaceForTemplate(templateSize)
-        ) {
+        if (this.__cacheSize + templateSize > this.__config.cache.maxSize) {
+          if (this.createEntrySpaceForTemplate(templateSize)) {
+            this.__compiledTemplatesMap.set(absolutePath, {
+              fn: compiled,
+              size: templateSize,
+            });
+            this.__cacheSize += templateSize;
+          }
+        } else {
           this.__compiledTemplatesMap.set(absolutePath, {
             fn: compiled,
             size: templateSize,
           });
-
           this.__cacheSize += templateSize;
         }
       }
@@ -114,7 +115,7 @@ export default class Mutor extends MutorBase {
         const extension = extname(srcPath);
 
         if (this.__config.build.include.has(extension)) {
-          const rendered = this.renderFromFile(srcPath, context);
+          const rendered = this.renderFile(srcPath, context);
           await writeFile(destinationPath, rendered, "utf-8");
         } else {
           return await copyFile(srcPath, destinationPath);

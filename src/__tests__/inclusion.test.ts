@@ -22,7 +22,7 @@ describe("Mutor Inclusion & Circularity", () => {
       'Parent {{ Mutor::include("./child.html") }}',
     );
 
-    const result = engine.renderFromFile(join(testDir, "parent.html"), {});
+    const result = engine.renderFile(join(testDir, "parent.html"), {});
     expect(result).toBe("Parent Child Content");
   });
 
@@ -36,7 +36,7 @@ describe("Mutor Inclusion & Circularity", () => {
       '{{ Mutor::include("./a.html") }}',
     );
 
-    expect(() => engine.renderFromFile(join(testDir, "a.html"), {})).toThrow(
+    expect(() => engine.renderFile(join(testDir, "a.html"), {})).toThrow(
       /Circular include detected/,
     );
   });
