@@ -168,7 +168,12 @@ export default function compile(
       if (isBlock || isBlockEnd) {
         body += js;
       } else {
-        body += autoEscape ? `acc+=escapeFn(${js});` : `acc+=${js};`;
+        // Only escape unknown values returned from fn calls or object property resolution
+        // Values returned from Mutor::include should be taken as is.
+        body +=
+          autoEscape && !js.startsWith("namespaces.Mutor.include")
+            ? `acc+=escapeFn(${js});`
+            : `acc+=${js};`;
       }
 
       // Set state for the NEXT raw text chunk
