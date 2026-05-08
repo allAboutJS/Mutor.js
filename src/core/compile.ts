@@ -69,7 +69,7 @@ export default function compile(
         trimNext = false;
       }
 
-      body += `acc+=\`${escapedChunk}\`;`;
+      body += `acc+=\`${escapeRawText(escapedChunk)}\`;`;
       if (!keepOpeningTagEscapeDelimiter)
         body += `acc+=\`${delimiters.openingTag}\`;`;
 
