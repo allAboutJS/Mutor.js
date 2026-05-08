@@ -1,5 +1,6 @@
 import { BlockType } from "../types/enums";
 import type { CompileMetadata, ForExpr, MutorConfig } from "../types/types";
+import escapeRawText from "../utils/escape-raw-text";
 import getLineAndColumnNumbers from "../utils/get-line-and-column-nums";
 import getLineSnapshot from "../utils/get-line-snapshot";
 import build from "./build";
@@ -36,7 +37,7 @@ export default function compile(
     if (templateOpenTagIdx === -1) {
       let lastChunk = src.slice(cursor);
       if (trimNext) lastChunk = lastChunk.trimStart();
-      if (lastChunk) body += `acc+=\`${lastChunk}\`;`;
+      if (lastChunk) body += `acc+=\`${escapeRawText(lastChunk)}\`;`;
       break;
     }
 
@@ -129,7 +130,7 @@ export default function compile(
       }
 
       if (rawText) {
-        body += `acc+=\`${rawText}\`;`;
+        body += `acc+=\`${escapeRawText(rawText)}\`;`;
       }
     }
 
