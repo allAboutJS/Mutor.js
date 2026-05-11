@@ -1,7 +1,7 @@
 import { BlockType } from "../types/enums";
 import type { CompileMetadata, ForExpr, MutorConfig } from "../types/types";
 import escapeRawText from "../utils/escape-raw-text";
-import getLineAndColumnNumbers from "../utils/get-line-and-column-nums";
+import getLineNumberAndIndex from "../utils/get-line-and-column-nums";
 import getLineSnapshot from "../utils/get-line-snapshot";
 import build from "./build";
 import { MutorCompilerError } from "./error";
@@ -84,22 +84,14 @@ export default function compile(
     );
 
     if (templateEndTagIdx === -1) {
-      const { line, lineIndex } = getLineAndColumnNumbers(
-        src,
-        templateOpenTagIdx,
-      );
-
-      const { line: lineText, pos } = getLineSnapshot(
-        src,
-        lineIndex,
-        templateOpenTagIdx,
-      );
+      const [line, lineIndex] = getLineNumberAndIndex(src, templateOpenTagIdx);
+      const lineText = getLineSnapshot(src, lineIndex);
 
       throw new MutorCompilerError(
         "No closing tag found.",
         line,
         lineText,
-        pos,
+        templateOpenTagIdx,
         meta.path,
       );
     }
@@ -176,6 +168,7 @@ export default function compile(
           // Only escape unknown values returned from fn calls or object property resolution
           // Values returned from Mutor::include should be taken as is.
           body +=
+            // Escape the return values of unknown values at runtime
             autoEscape && !js.startsWith("namespaces.Mutor.include")
               ? `acc+=escapeFn(${js});`
               : `acc+=${js};`;
@@ -186,24 +179,20 @@ export default function compile(
       if (rightTrim) trimNext = true;
     } catch (e) {
       const { message, pos: relPos } = e as { message: string; pos: number };
-      const { line, lineIndex } = getLineAndColumnNumbers(
-        src,
-        templateOpenTagIdx,
-      );
-      const { line: lineText, pos } = getLineSnapshot(
-        src,
-        lineIndex,
-        templateOpenTagIdx,
-      );
+      const delimitersLength = leftTrim
+        ? delimiters.whitespaceTrim.length + delimiters.openingTag.length
+        : delimiters.openingTag.length;
+
+      const finalPos = templateOpenTagIdx + relPos + delimitersLength;
+
+      const [line, lineIndex] = getLineNumberAndIndex(src, finalPos);
+      const lineText = getLineSnapshot(src, lineIndex);
+
       throw new MutorCompilerError(
         message,
         line,
         lineText,
-        pos +
-          relPos +
-          (leftTrim
-            ? delimiters.openingTag.length + delimiters.whitespaceTrim.length
-            : delimiters.openingTag.length),
+        finalPos - lineIndex,
         meta.path,
       );
     }
@@ -211,13 +200,13 @@ export default function compile(
 
   if (blockOpeningStack.length) {
     const lastPos = blockOpeningStack.pop()?.pos as number;
-    const { line, lineIndex } = getLineAndColumnNumbers(src, lastPos);
-    const { line: lineText, pos } = getLineSnapshot(src, lineIndex, lastPos);
+    const [line, lineIndex] = getLineNumberAndIndex(src, lastPos);
+    const lineText = getLineSnapshot(src, lineIndex);
     throw new MutorCompilerError(
       "Unclosed block detected.",
       line,
       lineText,
-      pos + delimiters.openingTag.length,
+      lastPos - lineIndex,
       meta.path,
     );
   }

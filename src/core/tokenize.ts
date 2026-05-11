@@ -32,22 +32,61 @@ export default function tokenize(expr: string) {
   }
 
   function accumulateStr() {
-    let buffer = "";
-    if (char === '"' || char === "'" || char === "`") {
-      let j = cursor + 1;
-
-      while (expr[j] !== char && j < expr.length) {
-        buffer += expr[j];
-        j++;
-      }
-
-      if (j > expr.length) {
-        throw { pos: cursor, message: `Found string without closing quote.` };
-      }
-
-      tokens.push({ type: TokenType.STRING, value: buffer, pos: cursor });
-      cursor = j;
+    if (char !== '"' && char !== "'" && char !== "`") {
+      return false;
     }
+
+    const quote = char;
+    const start = cursor;
+
+    let j = cursor + 1;
+    let buffer = "";
+
+    while (j < expr.length) {
+      const current = expr[j];
+
+      // Escape sequence
+      if (current === "\\") {
+        // Ensure next char exists
+        if (j + 1 >= expr.length) {
+          throw {
+            pos: j,
+            message: "Unexpected end of string after escape character.",
+          };
+        }
+
+        // Preserve escape exactly as written
+        buffer += current;
+        buffer += expr[j + 1];
+
+        j += 2;
+        continue;
+      }
+
+      // Closing quote
+      if (current === quote) {
+        break;
+      }
+
+      buffer += current;
+      j++;
+    }
+
+    // Missing closing quote
+    if (j >= expr.length || expr[j] !== quote) {
+      throw {
+        pos: start,
+        message: `String literal missing closing ${quote}.`,
+      };
+    }
+
+    tokens.push({
+      type: TokenType.STRING,
+      value: buffer,
+      pos: start,
+    });
+
+    cursor = j;
   }
 
   function accumulateNumber() {

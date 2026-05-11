@@ -632,5 +632,13 @@ export default function generateAst(
   }
 
   const ast = parseTernaryExpr();
+
+  if (cursor !== tokens.length) {
+    throw {
+      pos: tokens[cursor].pos,
+      message: `Unexpected end of expression. \nExpected end of expression but found "${tokens[cursor].value}".`,
+    };
+  }
+
   return ast;
 }

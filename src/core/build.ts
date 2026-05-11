@@ -10,6 +10,7 @@ import type {
   NamespaceExpr,
   PropAccessExpr,
 } from "../types/types";
+import escapeRawText from "../utils/escape-raw-text";
 import { MutorError } from "./error";
 
 /**
@@ -38,7 +39,7 @@ export default function build(
         return expr.value;
 
       case ExprType.STRING:
-        return `\`${/\$/.test(expr.value) ? expr.value.replaceAll("$", "\\$") : expr.value}\``;
+        return `\`${/\$\\/.test(expr.value) ? escapeRawText(expr.value) : expr.value}\``;
 
       case ExprType.BOOLEAN:
         return (expr as any).true ? "true" : "false";

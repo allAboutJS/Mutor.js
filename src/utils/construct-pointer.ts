@@ -6,5 +6,5 @@
  */
 export default function constructPointer(pos: number, offset: number) {
   // pos is the index in the text, offset is the width of "Line | "
-  return `${" ".repeat(pos + offset + 1)}^`;
+  return `${" ".repeat(pos + offset)}^`;
 }
