@@ -177,6 +177,7 @@ export interface MutorConfig {
     closingTag: string;
     whitespaceTrim: string;
     openingTagEscape: string;
+    commentTag: string;
   };
 }
 
@@ -198,3 +199,18 @@ export type BuildContext = {
 export type CompileMetadata = {
   path: string;
 };
+
+export type CommandStruct = {
+  command: string;
+  commandData: string;
+  "--out"?: string;
+  "--data"?: string;
+  "--config"?: string;
+};
+
+export type CleanupFn = () => void;
+
+export type ExitCode =
+  | 0 // Success
+  | 1 // RuntimeError
+  | 2; // ArgumentError

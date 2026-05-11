@@ -14,6 +14,16 @@ export default function parse(
   const leftTrim = templateBlock.startsWith(openingTagWithWhitespaceCtrl);
   const rightTrim = templateBlock.endsWith(closingTagWithWhitespaceCtrl);
 
+  const isComment = templateBlock.startsWith(
+    leftTrim
+      ? openingTagWithWhitespaceCtrl + delimiters.commentTag
+      : delimiters.openingTag + delimiters.commentTag,
+  );
+
+  if (isComment) {
+    return { isComment, leftTrim, rightTrim };
+  }
+
   const inner = templateBlock.slice(
     leftTrim
       ? openingTagWithWhitespaceCtrl.length

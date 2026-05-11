@@ -23,4 +23,19 @@ export default defineConfig([
     target: "es2020",
     platform: "node",
   },
+  {
+    entry: { cli: "src/bin/cli.ts" },
+    outDir: "dist",
+    format: ["cjs"],
+    dts: false,
+    sourcemap: true,
+    clean: false,
+    minify: false,
+    target: "es2022",
+    platform: "node",
+    banner: {
+      js: "#!/usr/bin/env node",
+    },
+    noExternal: [/@mutor\/.*/],
+  },
 ]);

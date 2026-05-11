@@ -36,7 +36,7 @@ export default class Mutor {
     },
   };
 
-  constructor(config: PartialMutorConfig) {
+  constructor(config: PartialMutorConfig = {}) {
     this.addConfig(config);
     // Provide access to the currenct context via template
     Object.defineProperty(this.__namespaces.Mutor, "$$context", {
@@ -60,20 +60,20 @@ export default class Mutor {
 
     this.__config = {
       build: {
-        include: new Set([
-          ...defaultConfig.build.include,
-          ...(build?.include || []),
-        ]),
+        include: new Set([...(build?.include || defaultConfig.build.include)]),
         exclude: new Set([
           ...defaultConfig.build.exclude,
           ...(build?.exclude || []),
         ]),
       },
       autoEscape: autoEscape === true ? true : autoEscape !== false,
-      allowedProps: allowedProps || new Set(),
+      allowedProps: allowedProps || defaultConfig.allowedProps,
       allowFnCalls: !!allowFnCalls,
       cache: { ...defaultConfig.cache, ...(cache || {}) },
-      forbiddenProps: forbiddenProps || new Set(),
+      forbiddenProps: new Set([
+        ...defaultConfig.forbiddenProps,
+        ...(forbiddenProps || []),
+      ]),
       keepOpeningTagEscapeDelimiter:
         keepOpeningTagEscapeDelimiter === true
           ? true
@@ -89,11 +89,12 @@ export default class Mutor {
 
   restoreDefaultConfig() {
     this.__config = { ...defaultConfig };
-    return this.__config;
   }
 
-  compile(template: string, path = "anonymous"): Function {
-    return compile(template, this.__config, { path });
+  compile(template: string): Function {
+    return compile(template, this.__config, {
+      path: this.__currentRenderedPath || "anonymous",
+    });
   }
 
   render(template: string, context: any): string {

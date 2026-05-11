@@ -16,7 +16,7 @@ import { MutorError } from "./error";
 import MutorBase from "./mutor";
 
 export default class Mutor extends MutorBase {
-  constructor(config: PartialMutorConfig) {
+  constructor(config: PartialMutorConfig = {}) {
     super(config);
     this.__namespaces.Mutor.include = (path: string, context: any) => {
       const resolvedPath = toAbsolutePath(this.__currentRenderedPath, path);
@@ -54,7 +54,7 @@ export default class Mutor extends MutorBase {
       compiled = this.__compiledTemplatesMap.get(absolutePath)!.fn;
     } else {
       const template = readFileSync(absolutePath, "utf-8");
-      compiled = this.compile(template, path);
+      compiled = this.compile(template);
 
       if (this.__config.cache.active) {
         const templateSize = template.length * 2 + 500; // Approximate byte size

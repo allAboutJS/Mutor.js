@@ -30,6 +30,9 @@
       "default": "./dist/server.js"
     }
   },
+  "bin": {
+    "mutor": "./dist/cli.cjs"
+  },
   "files": [
     "dist"
   ],

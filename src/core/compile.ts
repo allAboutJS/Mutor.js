@@ -116,6 +116,7 @@ export default function compile(
       isBlockEnd,
       hasContext,
       requiresBlockClose,
+      isComment,
     } = parse(template, { delimiters });
 
     // Process Raw Text (between cursor and current tag)
@@ -140,40 +141,45 @@ export default function compile(
     cursor = templateEndTagIdx + delimiters.closingTag.length;
 
     try {
-      const tokens = tokenize(inner);
-      const ast = generateAst(tokens, { allowFnCalls });
+      if (!isComment) {
+        const tokens = tokenize(inner);
+        const ast = generateAst(tokens, { allowFnCalls });
 
-      if (isBlock && requiresBlockClose && hasContext) {
-        scope.push((ast as ForExpr).variable);
-        blockOpeningStack.push({
-          type: BlockType.LOOP,
-          pos: templateOpenTagIdx,
-        });
-      } else if (isBlock && requiresBlockClose && !hasContext) {
-        blockOpeningStack.push({
-          type: BlockType.NON_LOOP,
-          pos: templateOpenTagIdx,
-        });
-      }
+        if (isBlock && requiresBlockClose && hasContext) {
+          scope.push((ast as ForExpr).variable);
+          blockOpeningStack.push({
+            type: BlockType.LOOP,
+            pos: templateOpenTagIdx,
+          });
+        } else if (isBlock && requiresBlockClose && !hasContext) {
+          blockOpeningStack.push({
+            type: BlockType.NON_LOOP,
+            pos: templateOpenTagIdx,
+          });
+        }
 
-      if (isBlockEnd) {
-        const lastBlockOpened = blockOpeningStack.pop();
-        if (lastBlockOpened?.type === BlockType.LOOP) scope.pop();
-        if (lastBlockOpened === undefined)
-          throw { message: "Unexpected end of block", pos: templateOpenTagIdx };
-      }
+        if (isBlockEnd) {
+          const lastBlockOpened = blockOpeningStack.pop();
+          if (lastBlockOpened?.type === BlockType.LOOP) scope.pop();
+          if (lastBlockOpened === undefined)
+            throw {
+              message: "Unexpected end of block",
+              pos: templateOpenTagIdx,
+            };
+        }
 
-      const js = build(ast, { allowedProps, forbiddenProps, scope });
+        const js = build(ast, { allowedProps, forbiddenProps, scope });
 
-      if (isBlock || isBlockEnd) {
-        body += js;
-      } else {
-        // Only escape unknown values returned from fn calls or object property resolution
-        // Values returned from Mutor::include should be taken as is.
-        body +=
-          autoEscape && !js.startsWith("namespaces.Mutor.include")
-            ? `acc+=escapeFn(${js});`
-            : `acc+=${js};`;
+        if (isBlock || isBlockEnd) {
+          body += js;
+        } else {
+          // Only escape unknown values returned from fn calls or object property resolution
+          // Values returned from Mutor::include should be taken as is.
+          body +=
+            autoEscape && !js.startsWith("namespaces.Mutor.include")
+              ? `acc+=escapeFn(${js});`
+              : `acc+=${js};`;
+        }
       }
 
       // Set state for the NEXT raw text chunk

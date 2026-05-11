@@ -10,8 +10,8 @@ import { MutorError } from "../core/error";
  */
 export default function validateComputedProp(
   r: string | number,
-  forbiddenProps: Set<string | number>,
   allowedProps: Set<string | number>,
+  forbiddenProps: Set<string | number>,
 ): string | number {
   if (forbiddenProps.has(r) && !allowedProps.has(r)) {
     throw new MutorError(

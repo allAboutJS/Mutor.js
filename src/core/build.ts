@@ -38,7 +38,7 @@ export default function build(
         return expr.value;
 
       case ExprType.STRING:
-        return `"${expr.value}"`;
+        return `\`${/\$/.test(expr.value) ? expr.value.replaceAll("$", "\\$") : expr.value}\``;
 
       case ExprType.BOOLEAN:
         return (expr as any).true ? "true" : "false";
@@ -110,8 +110,8 @@ export default function build(
       const right = buildExpr(expr.right);
       const optionalChain = expr.optional ? "?." : "";
 
-      return expr.right.type !== ExprType.STRING &&
-        expr.right.type !== ExprType.NUMBER
+      return expr.right.type === ExprType.STRING ||
+        expr.right.type === ExprType.NUMBER
         ? `${left}${optionalChain}[${right}]`
         : `${left}${optionalChain}[validateComputedProps(${right}, allowedProps, forbiddenProps)]`;
     } else {

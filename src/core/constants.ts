@@ -86,6 +86,7 @@ export const defaultConfig: MutorConfig = {
     openingTag: "{{",
     openingTagEscape: "\\",
     whitespaceTrim: "~",
+    commentTag: "#",
   },
   keepOpeningTagEscapeDelimiter: false,
   cache: {
