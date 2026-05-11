@@ -8,7 +8,6 @@ export default defineConfig([
     dts: true,
     sourcemap: true,
     clean: true,
-    minify: true,
     target: "es2020",
     platform: "neutral",
   },
@@ -19,7 +18,6 @@ export default defineConfig([
     dts: true,
     sourcemap: true,
     clean: false,
-    minify: true,
     target: "es2020",
     platform: "node",
   },
@@ -30,7 +28,6 @@ export default defineConfig([
     dts: false,
     sourcemap: true,
     clean: false,
-    minify: false,
     target: "es2022",
     platform: "node",
     banner: {
