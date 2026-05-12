@@ -168,6 +168,11 @@ export interface MutorConfig {
   forbiddenProps: Set<string>;
   allowFnCalls: boolean;
   autoEscape: boolean;
+  onIncludeFail: "throw" | "ignore" | "ignoreLog";
+  onIncludeError?: (
+    meta: { from: string; path: string; absolutePath?: string },
+    err: any,
+  ) => void;
   build: {
     include: Set<string>;
     exclude: Set<string>;

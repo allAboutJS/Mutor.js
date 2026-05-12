@@ -22,15 +22,36 @@ export default class Mutor {
       include: (path: string, ctx: Record<any, any>) => {
         if (this.__includeStack.has(path)) {
           throw new MutorError(
-            `Circular include detected:\n${Array.from(this.__includeStack).join("\n")}\n${path}`,
+            `Circular include detected.\n${Array.from(this.__includeStack).join("\n")}\n${path}`,
           );
         }
 
+        const includeSource = this.__currentRenderedPath;
+        const errMsg = `[Mutor.js]\nComponent '${path}' not found.\nThe component was included from ${`'${includeSource}'` || "an anonymous component"}.\n`;
+
         try {
           this.__includeStack.add(path);
+
           return this.renderComponent(path, ctx ?? this.__currentContext);
+        } catch (err) {
+          if (this.__config.onIncludeFail === "throw") {
+            throw new MutorError(errMsg);
+          }
+
+          const meta = { from: includeSource, path, absolutePath: undefined };
+
+          // Log error if onIncludeFail is set to "ignore" and onIncludeError is not defined
+          if (
+            this.__config.onIncludeFail === "ignoreLog" &&
+            !this.__config.onIncludeError
+          ) {
+            console.log(errMsg);
+          }
+
+          return this.__config.onIncludeError?.(meta, err) ?? "";
         } finally {
           this.__includeStack.delete(path);
+          this.__currentRenderedPath = includeSource;
         }
       },
     },
@@ -56,6 +77,8 @@ export default class Mutor {
       allowFnCalls,
       cache,
       build,
+      onIncludeFail,
+      onIncludeError,
     } = conf;
 
     this.__config = {
@@ -69,6 +92,8 @@ export default class Mutor {
       autoEscape: autoEscape === true ? true : autoEscape !== false,
       allowedProps: allowedProps || defaultConfig.allowedProps,
       allowFnCalls: !!allowFnCalls,
+      onIncludeFail: onIncludeFail || defaultConfig.onIncludeFail,
+      onIncludeError: onIncludeError || defaultConfig.onIncludeError,
       cache: { ...defaultConfig.cache, ...(cache || {}) },
       forbiddenProps: new Set([
         ...defaultConfig.forbiddenProps,
@@ -152,7 +177,7 @@ export default class Mutor {
     if (this.__cacheSize + templateSize > this.__config.cache.maxSize) {
       if (!this.createEntrySpaceForTemplate(templateSize)) {
         throw new MutorError(
-          `The template for the component '${identifier}' is too large. Consider increasing 'cache.maxSize' in the config`,
+          `The template for the component '${identifier}' is too large and will not fit in the cache. Consider increasing 'cache.maxSize' in the config`,
         );
       }
     }

@@ -19,20 +19,41 @@ export default class Mutor extends MutorBase {
   constructor(config: PartialMutorConfig = {}) {
     super(config);
     this.__namespaces.Mutor.include = (path: string, context: any) => {
+      const includeSource = this.__currentRenderedPath;
       const resolvedPath = toAbsolutePath(this.__currentRenderedPath, path);
+      const errMsg = `[Mutor.js]\nFile '${resolvedPath}' not found.\nThe file was included from ${`'${includeSource}'` || "an anonymous template"}.\n`;
 
       if (this.__includeStack.has(resolvedPath)) {
         throw new MutorError(
-          `Circular include detected:\n${Array.from(this.__includeStack).join("\n")}\n${resolvedPath}`,
+          `Circular include detected.\n${Array.from(this.__includeStack).join("\n")}\n${resolvedPath}`,
         );
       }
 
       try {
         this.__includeStack.add(resolvedPath);
-
         return this.renderFile(resolvedPath, context ?? this.__currentContext);
+      } catch (err) {
+        if (this.__config.onIncludeFail === "throw") {
+          throw new MutorError(errMsg);
+        }
+
+        // Log error if onIncludeFail is set to "ignoreLog" and onIncludeError is not defined
+        if (
+          this.__config.onIncludeFail === "ignoreLog" &&
+          !this.__config.onIncludeError
+        ) {
+          console.log(errMsg);
+        }
+
+        return (
+          this.__config.onIncludeError?.(
+            { from: includeSource, path, absolutePath: resolvedPath },
+            err,
+          ) ?? ""
+        );
       } finally {
         this.__includeStack.delete(resolvedPath);
+        this.__currentRenderedPath = includeSource;
       }
     };
   }
@@ -126,7 +147,6 @@ export default class Mutor extends MutorBase {
 
   async compileDir(src: string) {
     const absolutePath = toAbsolutePath(src);
-
     const entries = await readdir(absolutePath, { withFileTypes: true });
 
     await Promise.all(

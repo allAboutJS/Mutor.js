@@ -15,7 +15,7 @@ export default function validateComputedProp(
 ): string | number {
   if (forbiddenProps.has(r) && !allowedProps.has(r)) {
     throw new MutorError(
-      `Forbidden property access. Access to this computed property "${r}" is forbidden.`,
+      `Forbidden property access.\nAccess to this computed property '${r}' is forbidden.`,
     );
   }
   return r;

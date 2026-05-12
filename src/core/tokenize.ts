@@ -148,5 +148,7 @@ export default function tokenize(expr: string) {
     cursor++;
   }
 
-  return tokens;
+  return tokens.length
+    ? tokens
+    : [{ type: TokenType.STRING, value: "", pos: 0 }];
 }

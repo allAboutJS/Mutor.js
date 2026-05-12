@@ -306,8 +306,8 @@ export default function generateAst(
             tokens[cursor]?.type !== TokenType.IDENT)
         ) {
           throw {
-            message: `Invalid namespaces access. Expected syntax <IDENTIFIER>::<IDENTIFIER>, but got '${tokens[cursor - 2]?.value}::${tokens[cursor]?.value}' instead.`,
-            pos: tokens[cursor]?.pos,
+            message: `Invalid namespaces access. Expected syntax <IDENTIFIER>::<IDENTIFIER>, but got '${tokens[cursor - 2]?.value}::${tokens[cursor]?.value ?? ""}' instead.`,
+            pos: tokens[cursor]?.pos ?? tokens[cursor - 1].pos,
           };
         }
 
@@ -636,7 +636,7 @@ export default function generateAst(
   if (cursor !== tokens.length) {
     throw {
       pos: tokens[cursor].pos,
-      message: `Unexpected end of expression. \nExpected end of expression but found "${tokens[cursor].value}".`,
+      message: `Expected token '${tokens[cursor].value}'.\nExpected an operator or the end of the expression.`,
     };
   }
 

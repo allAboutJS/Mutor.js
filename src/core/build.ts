@@ -88,7 +88,7 @@ export default function build(
 
       default:
         throw new MutorError(
-          `Unsupported expression type: ${(expr as any).type}`,
+          `Unsupported expression type '${(expr as any).type}'`,
         );
     }
   }

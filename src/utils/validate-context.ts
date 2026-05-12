@@ -25,7 +25,9 @@ export default function validateContext(ctx: any) {
     // Block prototype pollution vectors early
     const proto = Object.getPrototypeOf(value);
     if (proto && proto !== Object.prototype && proto !== Array.prototype) {
-      throw new MutorError(`Unsafe prototype detected at ${path || "root"}`);
+      throw new MutorError(
+        `Unsafe prototype detected at ${path || "root"} in context.`,
+      );
     }
 
     // Arrays
@@ -64,7 +66,9 @@ export default function validateContext(ctx: any) {
 
       // Block getters/setters
       if (desc.get || desc.set) {
-        throw new MutorError(`Getter/setter not allowed: ${path}.${key}`);
+        throw new MutorError(
+          `Getter/setter not allowed at '${path}.${key}' in context.`,
+        );
       }
 
       const prop = value[key];
