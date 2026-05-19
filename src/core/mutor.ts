@@ -97,6 +97,12 @@ export default class Mutor extends MutorBase {
     );
   }
 
+  renderAsyncComponent(identifier: string, context: any): Promise<string> {
+    return new Promise((resolve) => {
+      resolve(this.renderComponent(identifier, context));
+    });
+  }
+
   registerComponent(identifier: string, template: string) {
     return this.register(identifier, template);
   }

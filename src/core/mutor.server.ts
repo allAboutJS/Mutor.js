@@ -132,6 +132,12 @@ export default class MutorServer extends MutorBase {
     return this.__renderFile(path, context, createRuntimeFrame(null, path));
   }
 
+  renderFileAsync(path: string, context: any): Promise<string> {
+    return new Promise((resolve) => {
+      resolve(this.renderFile(path, context));
+    });
+  }
+
   async buildDir(src: string, destination: string, context: any) {
     const absoluteDestinationPath = toAbsolutePath(destination);
     const absoluteSrcPath = toAbsolutePath(src);
