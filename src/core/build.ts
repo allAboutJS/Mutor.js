@@ -155,5 +155,11 @@ export default function build(
     return `}else if(${build(condition, context)}){`;
   }
 
-  return buildExpr(ast);
+  const result = buildExpr(ast);
+  return result.includes("namespaces.Mutor.await")
+    ? result.replaceAll(
+        "namespaces.Mutor.await",
+        "await namespaces.Mutor.await",
+      )
+    : result;
 }

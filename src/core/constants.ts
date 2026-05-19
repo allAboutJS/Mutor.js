@@ -239,3 +239,8 @@ export const namespaces = {
     },
   },
 };
+
+export const ASYNC_DIRECTIVE_REGEX = /('|"|`)use\s+async\1/;
+
+export const AsyncFunction = (async () => {})
+  .constructor as FunctionConstructor;

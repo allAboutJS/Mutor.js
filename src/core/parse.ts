@@ -1,4 +1,5 @@
 import type { MutorConfig } from "../types/types";
+import { ASYNC_DIRECTIVE_REGEX } from "./constants";
 
 /**
  * Parses a given template block by analyzing it for syntax correctness and whitespace control.
@@ -20,10 +21,6 @@ export default function parse(
       : delimiters.openingTag + delimiters.commentTag,
   );
 
-  if (isComment) {
-    return { isComment, leftTrim, rightTrim };
-  }
-
   const inner = templateBlock.slice(
     leftTrim
       ? openingTagWithWhitespaceCtrl.length
@@ -33,6 +30,15 @@ export default function parse(
         ? closingTagWithWhitespaceCtrl.length
         : delimiters.closingTag.length),
   );
+
+  if (isComment) {
+    return {
+      isComment,
+      leftTrim,
+      rightTrim,
+      async: ASYNC_DIRECTIVE_REGEX.test(inner),
+    };
+  }
 
   const trimmed = inner.trim();
   const isBlock =
@@ -52,5 +58,6 @@ export default function parse(
     isBlockEnd,
     hasContext,
     requiresBlockClose,
+    usesAwait: inner.includes("Mutor::await"),
   };
 }

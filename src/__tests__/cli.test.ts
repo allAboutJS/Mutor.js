@@ -1,16 +1,4 @@
-/**
- * cli.test.ts
- *
- * Unit tests for the Mutor CLI.
- *
- * Run with:  npx vitest run  (or: npx jest)
- *
- * The Mutor class and file-system calls are fully mocked so these tests
- * run without any real files on disk and without importing the actual
- * Mutor implementation.
- */
-
-import { readFileSync, statSync, writeFileSync } from "fs";
+import { readFileSync, statSync, writeFileSync } from "node:fs";
 import {
   beforeEach,
   describe,
@@ -20,7 +8,6 @@ import {
   vi,
 } from "vitest";
 import {
-  type CommandStruct,
   handleBuildCommand,
   handleCompileCommand,
   handleRenderCommand,
@@ -28,17 +15,16 @@ import {
   safeParseJsonFile,
   safeReadFile,
   safeWriteFile,
-} from "./cli";
+} from "../bin/cli";
 import {
   ArgumentError,
   FileReadError,
   FileWriteError,
   JsonParseError,
-} from "./cli-errors";
+} from "../bin/cli-errors";
+import type { CommandStruct } from "../types/types";
 
-// ---------------------------------------------------------------------------
 // Module mocks
-// ---------------------------------------------------------------------------
 
 vi.mock("fs", () => ({
   readFileSync: vi.fn(),

@@ -4,6 +4,7 @@ import escapeRawText from "../utils/escape-raw-text";
 import getLineNumberAndIndex from "../utils/get-line-and-column-nums";
 import getLineSnapshot from "../utils/get-line-snapshot";
 import build from "./build";
+import { AsyncFunction } from "./constants";
 import { MutorCompilerError } from "./error";
 import generateAst from "./generate-ast";
 import parse from "./parse";
@@ -24,6 +25,9 @@ export default function compile(
     forbiddenProps,
     autoEscape,
   } = config;
+
+  // Function mode (sync/async)
+  let mode: "sync" | "async" = "sync";
 
   // Whitespace control state
   let trimNext = false,
@@ -101,6 +105,7 @@ export default function compile(
       templateEndTagIdx + delimiters.closingTag.length,
     );
     const {
+      async,
       inner,
       leftTrim,
       rightTrim,
@@ -109,7 +114,17 @@ export default function compile(
       hasContext,
       requiresBlockClose,
       isComment,
+      usesAwait,
     } = parse(template, { delimiters });
+
+    // Disallow await in sync mode
+    if (usesAwait && mode !== "async") {
+      throw {
+        pos: templateOpenTagIdx,
+        message:
+          "Mutor::await() requires async mode.\nAdd {{# 'use async' }} at the top of the template.",
+      };
+    }
 
     // Process Raw Text (between cursor and current tag)
     let rawText = src.slice(cursor, templateOpenTagIdx);
@@ -133,7 +148,11 @@ export default function compile(
     cursor = templateEndTagIdx + delimiters.closingTag.length;
 
     try {
-      if (!isComment) {
+      if (isComment) {
+        if (async) {
+          mode = "async";
+        }
+      } else {
         const tokens = tokenize(inner);
         const ast = generateAst(tokens, { allowFnCalls });
 
@@ -212,13 +231,23 @@ export default function compile(
   }
 
   body += `return acc;`;
-  return new Function(
-    "ctx",
-    "namespaces",
-    "allowedProps",
-    "forbiddenProps",
-    "escapeFn",
-    "validateComputedProps",
-    body,
-  );
+  return mode === "async"
+    ? new AsyncFunction(
+        "ctx",
+        "namespaces",
+        "allowedProps",
+        "forbiddenProps",
+        "escapeFn",
+        "validateComputedProps",
+        body,
+      )
+    : new Function(
+        "ctx",
+        "namespaces",
+        "allowedProps",
+        "forbiddenProps",
+        "escapeFn",
+        "validateComputedProps",
+        body,
+      );
 }

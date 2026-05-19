@@ -7,110 +7,129 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { extname, join } from "node:path";
-import type { PartialMutorConfig } from "../types/types";
+import type { PartialMutorConfig, RuntimeFrame } from "../types/types";
+import createRuntimeFrame from "../utils/create-runtime";
 import escapeFn from "../utils/escape-fn";
 import toAbsolutePath from "../utils/to-absolute-path";
 import validateComputedProp from "../utils/validate-computed-prop";
 import validateContext from "../utils/validate-context";
 import { MutorError } from "./error";
-import MutorBase from "./mutor";
+import MutorBase from "./mutor.base";
 
-export default class Mutor extends MutorBase {
+export default class MutorServer extends MutorBase {
   constructor(config: PartialMutorConfig = {}) {
     super(config);
-    this.__namespaces.Mutor.include = (path: string, context: any) => {
-      const includeSource = this.__currentRenderedPath;
-      const resolvedPath = toAbsolutePath(this.__currentRenderedPath, path);
-      const errMsg = `[Mutor.js]\nFile '${resolvedPath}' not found.\nThe file was included from ${`'${includeSource}'` || "an anonymous template"}.\n`;
+  }
 
-      if (this.__includeStack.has(resolvedPath)) {
+  /**
+   * Set up the include namespace with the given runtime.
+   * This must be done before rendering to ensure includes have access to the runtime.
+   */
+  private __setupIncludeForRuntime(runtime: RuntimeFrame) {
+    this.__namespaces.Mutor.include = (path: string, context: any) => {
+      const resolvedPath = toAbsolutePath(runtime.renderedPath, path);
+
+      if (runtime.includeStack.has(resolvedPath)) {
         throw new MutorError(
-          `Circular include detected.\n${Array.from(this.__includeStack).join("\n")}\n${resolvedPath}`,
+          `Circular include detected.\n${Array.from(runtime.includeStack).join("\n")}\n${resolvedPath}`,
         );
       }
 
+      const previousPath = runtime.renderedPath;
+      runtime.includeStack.add(resolvedPath);
+      runtime.renderedPath = resolvedPath;
+
       try {
-        this.__includeStack.add(resolvedPath);
-        return this.renderFile(resolvedPath, context ?? this.__currentContext);
-      } catch (err) {
-        if (this.__config.onIncludeFail === "throw") {
-          throw new MutorError(errMsg);
-        }
-
-        // Log error if onIncludeFail is set to "ignoreLog" and onIncludeError is not defined
-        if (
-          this.__config.onIncludeFail === "ignoreLog" &&
-          !this.__config.onIncludeError
-        ) {
-          console.log(errMsg);
-        }
-
-        return (
-          this.__config.onIncludeError?.(
-            { from: includeSource, path, absolutePath: resolvedPath },
-            err,
-          ) ?? ""
+        return this.__renderFile(
+          resolvedPath,
+          context ?? runtime.context,
+          runtime,
         );
+      } catch (err) {
+        return this.handleError(err, previousPath, path, resolvedPath);
       } finally {
-        this.__includeStack.delete(resolvedPath);
-        this.__currentRenderedPath = includeSource;
+        runtime.includeStack.delete(resolvedPath);
+        runtime.renderedPath = previousPath;
       }
     };
   }
 
-  renderFile(path: string, context: any): string {
+  render(template: string, context: any): string {
+    const runtime = createRuntimeFrame(context, "anonymous");
+    this.__setupIncludeForRuntime(runtime);
+    return this.__renderWithRuntime(template, runtime);
+  }
+
+  renderAsync(template: string, context: any): Promise<string> {
+    return new Promise((resolve) => {
+      resolve(this.render(template, context));
+    });
+  }
+
+  private __renderFile(path: string, context: any, runtime: RuntimeFrame) {
+    this.__setupIncludeForRuntime(runtime);
+
     const absolutePath = toAbsolutePath(path);
     let compiled: Function;
 
-    const prevContext = this.__currentContext;
-    const prevRenderComponentIdentifier = this.__currentRenderedPath;
+    // Save previous state for nested renders
+    const previousContext = runtime.context;
+    const previousPath = runtime.renderedPath;
 
-    this.__currentContext = context;
-    this.__currentRenderedPath = path;
+    // Update runtime for this render
+    runtime.context = context ?? previousContext;
+    runtime.renderedPath = absolutePath;
 
-    if (
-      this.__config.cache.active &&
-      this.__compiledTemplatesMap.has(absolutePath)
-    ) {
-      compiled = this.__compiledTemplatesMap.get(absolutePath)!.fn;
-    } else {
-      const template = readFileSync(absolutePath, "utf-8");
-      compiled = this.compile(template);
+    try {
+      if (
+        this.__config.cache.active &&
+        this.__compiledTemplatesMap.has(absolutePath)
+      ) {
+        compiled = this.__compiledTemplatesMap.get(absolutePath)!.fn;
+      } else {
+        const template = readFileSync(absolutePath, "utf-8");
+        compiled = this.compile(template, runtime);
 
-      if (this.__config.cache.active) {
-        const templateSize = template.length * 2 + 500; // Approximate byte size
+        if (this.__config.cache.active) {
+          const templateSize = template.length * 2 + 500;
 
-        if (this.__cacheSize + templateSize > this.__config.cache.maxSize) {
-          if (this.createEntrySpaceForTemplate(templateSize)) {
+          if (this.__cacheSize + templateSize > this.__config.cache.maxSize) {
+            if (this.createEntrySpaceForTemplate(templateSize)) {
+              this.__compiledTemplatesMap.set(absolutePath, {
+                fn: compiled,
+                size: templateSize,
+              });
+              this.__cacheSize += templateSize;
+            }
+          } else {
             this.__compiledTemplatesMap.set(absolutePath, {
               fn: compiled,
               size: templateSize,
             });
             this.__cacheSize += templateSize;
           }
-        } else {
-          this.__compiledTemplatesMap.set(absolutePath, {
-            fn: compiled,
-            size: templateSize,
-          });
-          this.__cacheSize += templateSize;
         }
       }
+
+      const result = compiled(
+        validateContext(runtime.context),
+        this.__createNamespacesWithRuntime(runtime),
+        this.__config.allowedProps,
+        this.__config.forbiddenProps,
+        escapeFn,
+        validateComputedProp,
+      );
+
+      return result;
+    } finally {
+      // Restore previous state
+      runtime.context = previousContext;
+      runtime.renderedPath = previousPath;
     }
+  }
 
-    const result = compiled(
-      validateContext(context),
-      this.__namespaces,
-      this.__config.allowedProps,
-      this.__config.forbiddenProps,
-      escapeFn,
-      validateComputedProp,
-    );
-
-    this.__currentContext = prevContext;
-    this.__currentRenderedPath = prevRenderComponentIdentifier;
-
-    return result;
+  renderFile(path: string, context: any): string {
+    return this.__renderFile(path, context, createRuntimeFrame(null, path));
   }
 
   async buildDir(src: string, destination: string, context: any) {
@@ -166,7 +185,7 @@ export default class Mutor extends MutorBase {
         if (this.__config.build.include.has(extension)) {
           try {
             const template = await readFile(absoluteSrcPath, "utf-8");
-            this.registerComponent(absoluteSrcPath, template);
+            this.register(absoluteSrcPath, template);
           } catch {}
         }
       }),

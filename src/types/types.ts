@@ -219,3 +219,13 @@ export type ExitCode =
   | 0 // Success
   | 1 // RuntimeError
   | 2; // ArgumentError
+
+/**
+ * RuntimeFrame encapsulates all execution-local state for a single render operation.
+ * This allows async operations to work correctly by avoiding shared mutable state.
+ */
+export interface RuntimeFrame {
+  context: any;
+  renderedPath: string;
+  includeStack: Set<string>;
+}
