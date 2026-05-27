@@ -1,238 +1,109 @@
-import type { MutorConfig, PartialMutorConfig } from "../types/types";
+import type { PartialMutorConfig, RuntimeFrame } from "../types/types";
+import createRuntimeFrame from "../utils/create-runtime";
 import escapeFn from "../utils/escape-fn";
 import validateComputedProp from "../utils/validate-computed-prop";
 import validateContext from "../utils/validate-context";
-import compile from "./compile";
-import { defaultConfig, namespaces } from "./constants";
 import { MutorError } from "./error";
+import MutorBase from "./mutor.base";
 
-export default class Mutor {
-  protected __currentRenderedPath = "";
-  protected __includeStack = new Set<string>();
-  protected __cacheSize = 0;
-  protected __config: MutorConfig = { ...defaultConfig };
-  protected __compiledTemplatesMap: Map<
-    string,
-    { fn: Function; size: number }
-  > = new Map();
-  protected __currentContext: any = null;
-  protected __namespaces: Record<any, any> = {
-    ...namespaces,
-    Mutor: {
-      include: (path: string, ctx: Record<any, any>) => {
-        if (this.__includeStack.has(path)) {
-          throw new MutorError(
-            `Circular include detected.\n${Array.from(this.__includeStack).join("\n")}\n${path}`,
-          );
-        }
-
-        const includeSource = this.__currentRenderedPath;
-        const errMsg = `[Mutor.js]\nComponent '${path}' not found.\nThe component was included from ${`'${includeSource}'` || "an anonymous component"}.\n`;
-
-        try {
-          this.__includeStack.add(path);
-
-          return this.renderComponent(path, ctx ?? this.__currentContext);
-        } catch (err) {
-          if (this.__config.onIncludeFail === "throw") {
-            throw new MutorError(errMsg);
-          }
-
-          const meta = { from: includeSource, path, absolutePath: undefined };
-
-          // Log error if onIncludeFail is set to "ignore" and onIncludeError is not defined
-          if (
-            this.__config.onIncludeFail === "ignoreLog" &&
-            !this.__config.onIncludeError
-          ) {
-            console.log(errMsg);
-          }
-
-          return this.__config.onIncludeError?.(meta, err) ?? "";
-        } finally {
-          this.__includeStack.delete(path);
-          this.__currentRenderedPath = includeSource;
-        }
-      },
-    },
-  };
-
+export default class Mutor extends MutorBase {
   constructor(config: PartialMutorConfig = {}) {
-    this.addConfig(config);
-    // Provide access to the currenct context via template
-    Object.defineProperty(this.__namespaces.Mutor, "$$context", {
-      get: () => {
-        return this.__currentContext;
-      },
-    });
+    super(config);
   }
 
-  addConfig(conf: PartialMutorConfig): MutorConfig {
-    const {
-      autoEscape,
-      delimiters: overrideDelimeters,
-      allowedProps,
-      forbiddenProps,
-      keepOpeningTagEscapeDelimiter,
-      allowFnCalls,
-      cache,
-      build,
-      onIncludeFail,
-      onIncludeError,
-    } = conf;
+  private __setupIncludeForRuntime(runtime: RuntimeFrame) {
+    this.__namespaces.Mutor.include = (path: string, context: any) => {
+      if (runtime.includeStack.has(path)) {
+        throw new MutorError(
+          `Circular include detected.\n${Array.from(runtime.includeStack).join(" -> ")} -> ${path}`,
+        );
+      }
 
-    this.__config = {
-      build: {
-        include: new Set([...(build?.include || defaultConfig.build.include)]),
-        exclude: new Set([
-          ...defaultConfig.build.exclude,
-          ...(build?.exclude || []),
-        ]),
-      },
-      autoEscape: autoEscape === true ? true : autoEscape !== false,
-      allowedProps: allowedProps || defaultConfig.allowedProps,
-      allowFnCalls: !!allowFnCalls,
-      onIncludeFail: onIncludeFail || defaultConfig.onIncludeFail,
-      onIncludeError: onIncludeError || defaultConfig.onIncludeError,
-      cache: { ...defaultConfig.cache, ...(cache || {}) },
-      forbiddenProps: new Set([
-        ...defaultConfig.forbiddenProps,
-        ...(forbiddenProps || []),
-      ]),
-      keepOpeningTagEscapeDelimiter:
-        keepOpeningTagEscapeDelimiter === true
-          ? true
-          : keepOpeningTagEscapeDelimiter !== false,
-      delimiters: {
-        ...defaultConfig.delimiters,
-        ...(overrideDelimeters || {}),
-      },
+      const previousPath = runtime.renderedPath;
+      runtime.includeStack.add(path);
+      runtime.renderedPath = path;
+
+      try {
+        return this.__renderComponent(
+          path,
+          context ?? runtime.context,
+          runtime,
+        );
+      } catch (err) {
+        return this.handleError(err, previousPath, path, undefined);
+      } finally {
+        runtime.includeStack.delete(path);
+        runtime.renderedPath = previousPath;
+      }
     };
-
-    return this.__config;
-  }
-
-  restoreDefaultConfig() {
-    this.__config = { ...defaultConfig };
-  }
-
-  compile(template: string): Function {
-    return compile(template, this.__config, {
-      path: this.__currentRenderedPath || "anonymous",
-    });
   }
 
   render(template: string, context: any): string {
-    const prevContext = this.__currentContext;
-
-    if (prevContext !== context) {
-      this.__currentContext = context;
-    }
-
-    const result = this.compile(template)(
-      validateContext(context),
-      this.__namespaces,
-      this.__config.allowedProps,
-      this.__config.forbiddenProps,
-      escapeFn,
-      validateComputedProp,
-    );
-
-    this.__currentContext = prevContext;
-    return result;
+    const runtime = createRuntimeFrame(context, "anonymous");
+    this.__setupIncludeForRuntime(runtime);
+    return this.__renderWithRuntime(template, runtime);
   }
 
-  renderComponent(identifier: string, context: any): string {
+  renderAsync(template: string, context: any): Promise<string> {
+    return new Promise((resolve) => {
+      resolve(this.render(template, context));
+    });
+  }
+
+  private __renderComponent(
+    identifier: string,
+    context: any,
+    runtime: RuntimeFrame,
+  ) {
     if (!this.__compiledTemplatesMap.has(identifier)) {
       throw new MutorError(
         `No template exists with the identifier '${identifier}'`,
       );
     }
 
-    const prevRenderComponentIdentifier = this.__currentRenderedPath;
-    const prevContext = this.__currentContext;
     const compiled = this.__compiledTemplatesMap.get(identifier)!;
 
-    this.__currentContext = context;
-    this.__currentRenderedPath = identifier;
+    // Save previous state for nested renders
+    const previousContext = runtime.context;
+    const previousPath = runtime.renderedPath;
 
-    const result = compiled.fn(
-      validateContext(context),
-      this.__namespaces,
-      this.__config.allowedProps,
-      this.__config.forbiddenProps,
-      escapeFn,
-      validateComputedProp,
-    );
+    // Update runtime for this render
+    runtime.context = context ?? previousContext;
+    runtime.renderedPath = identifier;
 
-    this.__currentContext = prevContext;
-    this.__currentRenderedPath = prevRenderComponentIdentifier;
+    try {
+      const result = compiled.fn(
+        validateContext(runtime.context),
+        this.__createNamespacesWithRuntime(runtime),
+        this.__config.allowedProps,
+        this.__config.forbiddenProps,
+        escapeFn,
+        validateComputedProp,
+      );
 
-    return result;
+      return result;
+    } finally {
+      // Restore previous state
+      runtime.context = previousContext;
+      runtime.renderedPath = previousPath;
+    }
   }
 
-  registerComponent(identifier: string, template: string) {
-    const templateSize = template.length * 2 + 500;
+  renderComponent(identifier: string, context: any): string {
+    return this.__renderComponent(
+      identifier,
+      context,
+      createRuntimeFrame(context, identifier),
+    );
+  }
 
-    if (this.__cacheSize + templateSize > this.__config.cache.maxSize) {
-      if (!this.createEntrySpaceForTemplate(templateSize)) {
-        throw new MutorError(
-          `The template for the component '${identifier}' is too large and will not fit in the cache. Consider increasing 'cache.maxSize' in the config`,
-        );
-      }
-    }
-
-    this.__cacheSize += template.length * 2 + 500; // Approximate byte size
-    this.__compiledTemplatesMap.set(identifier, {
-      fn: this.compile(template),
-      size: templateSize,
+  renderAsyncComponent(identifier: string, context: any): Promise<string> {
+    return new Promise((resolve) => {
+      resolve(this.renderComponent(identifier, context));
     });
   }
 
-  reset() {
-    this.__config = { ...defaultConfig };
-    this.__compiledTemplatesMap.clear();
-    this.__currentContext = null;
-    this.__cacheSize = 0;
-  }
-
-  protected createEntrySpaceForTemplate(targetSize: number): boolean {
-    if (this.__cacheSize + targetSize < this.__config.cache.maxSize) {
-      return true;
-    }
-
-    if (targetSize > this.__config.cache.maxSize) {
-      return false;
-    }
-
-    const firstEntry = this.__compiledTemplatesMap.entries().next().value;
-
-    if (firstEntry) {
-      const [oldestKey, oldestData] = firstEntry;
-      this.__compiledTemplatesMap.delete(oldestKey);
-      this.__cacheSize -= oldestData.size;
-    }
-
-    return this.createEntrySpaceForTemplate(targetSize);
-  }
-
-  public getDiagnostics() {
-    const maxSize = this.__config.cache.maxSize;
-
-    return {
-      bytesUsed: this.__cacheSize,
-      bytesMax: maxSize,
-      readableUsed: `${(this.__cacheSize / 1024 / 1024).toFixed(2)} MB`,
-      readableMax: `${(maxSize / 1024 / 1024).toFixed(2)} MB`,
-      totalEntries: this.__compiledTemplatesMap.size,
-      percentFull:
-        maxSize > 0
-          ? Math.min(100, Math.round((this.__cacheSize / maxSize) * 100))
-          : 0,
-      avgTemplateSize:
-        this.__compiledTemplatesMap.size > 0
-          ? Math.round(this.__cacheSize / this.__compiledTemplatesMap.size)
-          : 0,
-    };
+  registerComponent(identifier: string, template: string) {
+    return this.register(identifier, template);
   }
 }

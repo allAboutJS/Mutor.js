@@ -1,6 +1,6 @@
 {
   "name": "mutorjs",
-  "version": "1.4.0",
+  "version": "1.5.3",
   "description": "A high-performance engine for secure templating.",
   "homepage": "https://github.com/allAboutJS/Mutor.js#readme",
   "bugs": {
@@ -62,7 +62,8 @@
     "ts-jest": "^29.4.9",
     "tsup": "^8.5.1",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.6"
   },
   "lint-staged": {
     "*.{js,ts,json}": [

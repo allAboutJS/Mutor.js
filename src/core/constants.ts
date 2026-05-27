@@ -15,37 +15,37 @@ export const keywords = new Set([
 ]);
 
 export const operators = new Set([
-  "::", // Namespace access
-  "||", // Or
-  "??", // Nullish coalesce
-  "&&", // And
-  "**", // Power
-  "^", // Bitwise XOr
-  "|", // Bitwise Or
-  "&", // Bitwise And
-  "!", // Not
-  "-", // Minus
-  "%", // Modulus
-  "+", // Plus
-  "*", // Times
-  "/", // Divide
-  ">", // Greater than
-  "<", // Less than
-  ">=", // Greater or equal
-  "<=", // Less or equal
-  "==", // Strict equal
-  "!=", // Strict not equal
-  ">>", // Bitwise right shift
-  "<<", // Bitwise left shift
-  ".", // Property acess
-  "?.", // Optional property access
-  "(", // Open parentheses
-  ")", // Close parentheses
-  "[", // Square open parentheses
-  "]", // Square close parentheses
-  ",", // Comma
-  ":", // Column
-  "?", // Ternary operator
+  "::",
+  "||",
+  "??",
+  "&&",
+  "**",
+  "^",
+  "|",
+  "&",
+  "!",
+  "-",
+  "%",
+  "+",
+  "*",
+  "/",
+  ">",
+  "<",
+  ">=",
+  "<=",
+  "==",
+  "!=",
+  ">>",
+  "<<",
+  ".",
+  "?.",
+  "(",
+  ")",
+  "[",
+  "]",
+  ",",
+  ":",
+  "?",
 ]);
 
 export const logicalOperators = new Set(["&&", "||", "??"]);
@@ -98,9 +98,9 @@ export const defaultConfig: MutorConfig = {
 
 export const namespaces = {
   JSON: {
-    stringify(value: any) {
+    stringify(value: any, space?: number) {
       try {
-        return JSON.stringify(value);
+        return JSON.stringify(value, null, space);
       } catch {
         throw new MutorError("JSON::stringify failed");
       }
@@ -120,31 +120,35 @@ export const namespaces = {
   },
 
   Object: {
-    keys(obj: Object) {
+    keys(obj: object) {
       if (!obj || typeof obj !== "object") {
         throw new MutorError("Object::keys expects an object");
       }
+
       return Object.keys(obj);
     },
 
-    values(obj: Object) {
+    values(obj: object) {
       if (!obj || typeof obj !== "object") {
         throw new MutorError("Object::values expects an object");
       }
+
       return Object.values(obj);
     },
 
-    entries(obj: Object) {
+    entries(obj: object) {
       if (!obj || typeof obj !== "object") {
         throw new MutorError("Object::entries expects an object");
       }
+
       return Object.entries(obj);
     },
 
-    hasOwn(obj: Object, key: any) {
+    hasOwn(obj: object, key: any) {
       if (!obj || typeof obj !== "object") {
         throw new MutorError("Object::hasOwn expects an object");
       }
+
       return Object.hasOwn(obj, key);
     },
 
@@ -152,7 +156,46 @@ export const namespaces = {
       if (!Array.isArray(entries)) {
         throw new MutorError("Object::fromEntries expects an array");
       }
+
       return Object.fromEntries(entries);
+    },
+
+    pick(obj: Record<string, any>, keys: string[]) {
+      if (!obj || typeof obj !== "object") {
+        throw new MutorError("Object::pick expects an object");
+      }
+
+      if (!Array.isArray(keys)) {
+        throw new MutorError("Object::pick expects an array of keys");
+      }
+
+      const result: Record<string, any> = {};
+
+      for (const key of keys) {
+        if (Object.hasOwn(obj, key)) {
+          result[key] = obj[key];
+        }
+      }
+
+      return result;
+    },
+
+    omit(obj: Record<string, any>, keys: string[]) {
+      if (!obj || typeof obj !== "object") {
+        throw new MutorError("Object::omit expects an object");
+      }
+
+      if (!Array.isArray(keys)) {
+        throw new MutorError("Object::omit expects an array of keys");
+      }
+
+      const result = { ...obj };
+
+      for (const key of keys) {
+        delete result[key];
+      }
+
+      return result;
     },
   },
 
@@ -163,6 +206,72 @@ export const namespaces = {
 
     from(value: any) {
       return Array.from(value);
+    },
+
+    of(...args: any[]) {
+      return Array.of(...args);
+    },
+
+    unique(arr: any[]) {
+      if (!Array.isArray(arr)) {
+        throw new MutorError("Array::unique expects an array");
+      }
+
+      return [...new Set(arr)];
+    },
+
+    compact(arr: any[]) {
+      if (!Array.isArray(arr)) {
+        throw new MutorError("Array::compact expects an array");
+      }
+
+      return arr.filter(Boolean);
+    },
+
+    chunk(arr: any[], size: number) {
+      if (!Array.isArray(arr)) {
+        throw new MutorError("Array::chunk expects an array");
+      }
+
+      if (!Number.isInteger(size) || size <= 0) {
+        throw new MutorError("Array::chunk expects a positive integer size");
+      }
+
+      const result = [];
+
+      for (let i = 0; i < arr.length; i += size) {
+        result.push(arr.slice(i, i + size));
+      }
+
+      return result;
+    },
+
+    range(start: number, end: number, step = 1) {
+      if (
+        !Number.isFinite(start) ||
+        !Number.isFinite(end) ||
+        !Number.isFinite(step)
+      ) {
+        throw new MutorError("Array::range expects finite numbers");
+      }
+
+      if (step === 0) {
+        throw new MutorError("Array::range step cannot be 0");
+      }
+
+      const result = [];
+
+      if (start <= end) {
+        for (let i = start; i <= end; i += step) {
+          result.push(i);
+        }
+      } else {
+        for (let i = start; i >= end; i -= Math.abs(step)) {
+          result.push(i);
+        }
+      }
+
+      return result;
     },
   },
 
@@ -175,6 +284,10 @@ export const namespaces = {
       return Number.isNaN(value);
     },
 
+    isInteger(value: any) {
+      return Number.isInteger(value);
+    },
+
     parseInt(value: string, radix = 10) {
       return Number.parseInt(value, radix);
     },
@@ -182,11 +295,39 @@ export const namespaces = {
     parseFloat(value: string) {
       return Number.parseFloat(value);
     },
+
+    clamp(value: number, min: number, max: number) {
+      return Math.min(Math.max(value, min), max);
+    },
+
+    toFixed(value: number, digits = 0) {
+      if (typeof value !== "number") {
+        throw new MutorError("Number::toFixed expects a number");
+      }
+
+      return value.toFixed(digits);
+    },
+
+    random(min = 0, max = 1) {
+      return Math.random() * (max - min) + min;
+    },
   },
 
   String: {
     fromCharCode(...args: number[]) {
       return String.fromCharCode(...args);
+    },
+
+    capitalize(value: string) {
+      if (typeof value !== "string") {
+        throw new MutorError("String::capitalize expects a string");
+      }
+
+      if (!value.length) {
+        return value;
+      }
+
+      return value[0].toUpperCase() + value.slice(1);
     },
   },
 
@@ -207,6 +348,22 @@ export const namespaces = {
       return Math.round(x);
     },
 
+    trunc(x: number) {
+      return Math.trunc(x);
+    },
+
+    sign(x: number) {
+      return Math.sign(x);
+    },
+
+    sqrt(x: number) {
+      return Math.sqrt(x);
+    },
+
+    pow(base: number, exponent: number) {
+      return base ** exponent;
+    },
+
     max(...args: number[]) {
       return Math.max(...args);
     },
@@ -216,7 +373,7 @@ export const namespaces = {
     },
 
     random() {
-      return Math.random(); // consider disabling in strict mode
+      return Math.random();
     },
   },
 
@@ -229,7 +386,24 @@ export const namespaces = {
       if (typeof str !== "string") {
         throw new MutorError("Date::parse expects a string");
       }
+
       return Date.parse(str);
+    },
+
+    new(date?: string | number) {
+      if (date === undefined) {
+        return new Date();
+      }
+
+      return new Date(date);
+    },
+
+    iso(date?: string | number | Date) {
+      return new Date(date ?? Date.now()).toISOString();
+    },
+
+    timestamp(date?: string | number | Date) {
+      return new Date(date ?? Date.now()).getTime();
     },
   },
 
@@ -238,4 +412,51 @@ export const namespaces = {
       return Boolean(value);
     },
   },
+
+  RegExp: {
+    test(pattern: string, value: string, flags = "") {
+      if (typeof pattern !== "string") {
+        throw new MutorError("RegExp::test expects a pattern string");
+      }
+
+      if (typeof value !== "string") {
+        throw new MutorError("RegExp::test expects a value string");
+      }
+
+      return new RegExp(pattern, flags).test(value);
+    },
+
+    match(pattern: string, value: string, flags = "") {
+      if (typeof pattern !== "string") {
+        throw new MutorError("RegExp::match expects a pattern string");
+      }
+
+      if (typeof value !== "string") {
+        throw new MutorError("RegExp::match expects a value string");
+      }
+
+      return value.match(new RegExp(pattern, flags));
+    },
+  },
+
+  URL: {
+    encode(value: string) {
+      if (typeof value !== "string") {
+        throw new MutorError("URL::encode expects a string");
+      }
+
+      return encodeURIComponent(value);
+    },
+
+    decode(value: string) {
+      if (typeof value !== "string") {
+        throw new MutorError("URL::decode expects a string");
+      }
+
+      return decodeURIComponent(value);
+    },
+  },
 };
+
+export const AsyncFunction = (async () => {})
+  .constructor as FunctionConstructor;

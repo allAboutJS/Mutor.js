@@ -3,7 +3,7 @@ import ejs from "ejs";
 import { Eta } from "eta";
 import Handlebars from "handlebars";
 import nunjucks from "nunjucks";
-import Mutor from "../../dist/server";
+import Mutor from "../../dist/index";
 
 const tEngine = new Mutor({ autoEscape: false });
 
