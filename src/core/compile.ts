@@ -74,8 +74,10 @@ export default function compile(
       }
 
       body += `acc+=\`${escapeRawText(escapedChunk)}\`;`;
-      if (!keepOpeningTagEscapeDelimiter)
+
+      if (!keepOpeningTagEscapeDelimiter) {
         body += `acc+=\`${delimiters.openingTag}\`;`;
+      }
 
       cursor = templateOpenTagIdx + delimiters.openingTag.length;
       continue;
@@ -105,7 +107,6 @@ export default function compile(
       templateEndTagIdx + delimiters.closingTag.length,
     );
     const {
-      async,
       inner,
       leftTrim,
       rightTrim,
@@ -117,13 +118,9 @@ export default function compile(
       usesAwait,
     } = parse(template, { delimiters });
 
-    // Disallow await in sync mode
+    // Switch to async mode is Mutor::await is used
     if (usesAwait && mode !== "async") {
-      throw {
-        pos: templateOpenTagIdx,
-        message:
-          "Mutor::await() requires async mode.\nAdd {{# 'use async' }} at the top of the template.",
-      };
+      mode = "async";
     }
 
     // Process Raw Text (between cursor and current tag)
@@ -148,11 +145,7 @@ export default function compile(
     cursor = templateEndTagIdx + delimiters.closingTag.length;
 
     try {
-      if (isComment) {
-        if (async) {
-          mode = "async";
-        }
-      } else {
+      if (!isComment) {
         const tokens = tokenize(inner);
         const ast = generateAst(tokens, { allowFnCalls });
 

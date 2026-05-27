@@ -15,37 +15,37 @@ export const keywords = new Set([
 ]);
 
 export const operators = new Set([
-  "::", // Namespace access
-  "||", // Or
-  "??", // Nullish coalesce
-  "&&", // And
-  "**", // Power
-  "^", // Bitwise XOr
-  "|", // Bitwise Or
-  "&", // Bitwise And
-  "!", // Not
-  "-", // Minus
-  "%", // Modulus
-  "+", // Plus
-  "*", // Times
-  "/", // Divide
-  ">", // Greater than
-  "<", // Less than
-  ">=", // Greater or equal
-  "<=", // Less or equal
-  "==", // Strict equal
-  "!=", // Strict not equal
-  ">>", // Bitwise right shift
-  "<<", // Bitwise left shift
-  ".", // Property acess
-  "?.", // Optional property access
-  "(", // Open parentheses
-  ")", // Close parentheses
-  "[", // Square open parentheses
-  "]", // Square close parentheses
-  ",", // Comma
-  ":", // Column
-  "?", // Ternary operator
+  "::",
+  "||",
+  "??",
+  "&&",
+  "**",
+  "^",
+  "|",
+  "&",
+  "!",
+  "-",
+  "%",
+  "+",
+  "*",
+  "/",
+  ">",
+  "<",
+  ">=",
+  "<=",
+  "==",
+  "!=",
+  ">>",
+  "<<",
+  ".",
+  "?.",
+  "(",
+  ")",
+  "[",
+  "]",
+  ",",
+  ":",
+  "?",
 ]);
 
 export const logicalOperators = new Set(["&&", "||", "??"]);
@@ -457,8 +457,6 @@ export const namespaces = {
     },
   },
 };
-
-export const ASYNC_DIRECTIVE_REGEX = /('|"|`)use\s+async\1/;
 
 export const AsyncFunction = (async () => {})
   .constructor as FunctionConstructor;

@@ -215,17 +215,24 @@ export type CommandStruct = {
 
 export type CleanupFn = () => void;
 
-export type ExitCode =
-  | 0 // Success
-  | 1 // RuntimeError
-  | 2; // ArgumentError
+export type ExitCode = 0 | 1 | 2;
 
-/**
- * RuntimeFrame encapsulates all execution-local state for a single render operation.
- * This allows async operations to work correctly by avoiding shared mutable state.
- */
 export interface RuntimeFrame {
   context: any;
   renderedPath: string;
   includeStack: Set<string>;
+}
+
+export interface ParseState {
+  cursor: number;
+  tokens: Token[];
+  config: { allowFnCalls: boolean };
+  generatingNamespace: boolean;
+}
+
+export interface BuildState {
+  scope: string[];
+  forbiddenProps: Set<string>;
+  allowedProps: Set<string>;
+  context: BuildContext;
 }

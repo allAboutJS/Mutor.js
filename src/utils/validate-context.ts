@@ -3,82 +3,94 @@ import { MutorError } from "../core/error";
 const OBJECT = "object";
 export const MUTOR_SAFE = Symbol("__mutor_safe_context");
 
-export default function validateContext(ctx: any) {
-  // Allow non object contexts
+function isPromiseLike(value: any) {
+  return (
+    value &&
+    (typeof value === OBJECT || typeof value === "function") &&
+    typeof value.then === "function"
+  );
+}
+
+function walk(value: any, path = "", seen = new Set()) {
+  if (!value || typeof value !== OBJECT) {
+    return value;
+  }
+
+  if (isPromiseLike(value)) {
+    return value;
+  }
+
+  if (seen.has(value)) {
+    return value;
+  }
+
+  seen.add(value);
+
+  if (value instanceof Map) {
+    for (const [k, v] of value.entries()) {
+      if (typeof k === OBJECT) walk(k, `${path}.mapKey`, seen);
+      value.set(k, walk(v, `${path}.mapValue`, seen));
+    }
+
+    return value;
+  }
+
+  if (value instanceof Set) {
+    const next = new Set();
+
+    for (const v of value.values()) {
+      next.add(walk(v, path, seen));
+    }
+
+    value.clear();
+
+    for (const v of next) {
+      value.add(v);
+    }
+
+    return value;
+  }
+
+  const proto = Object.getPrototypeOf(value);
+
+  if (proto !== Object.prototype && proto !== Array.prototype) {
+    throw new MutorError(
+      `Unsafe prototype detected at ${path || "root"} in context.`,
+    );
+  }
+
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i++) {
+      value[i] = walk(value[i], `${path}[${i}]`, seen);
+    }
+
+    return value;
+  }
+
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+
+  for (const key of Object.keys(descriptors)) {
+    const desc = descriptors[key];
+
+    if (desc.get || desc.set) {
+      throw new MutorError(
+        `Getter/setter not allowed at '${path}.${key}' in context.`,
+      );
+    }
+
+    value[key] = walk(value[key], `${path}.${key}`, seen);
+  }
+
+  return value;
+}
+
+export default function validateContext(ctx: unknown) {
   if (!ctx || typeof ctx !== OBJECT) {
     return ctx;
   }
 
-  if (MUTOR_SAFE in ctx) {
+  if (MUTOR_SAFE in (ctx as object)) {
     return ctx;
-  }
-
-  // vulnerability and prevent memory leaks across request lifecycles.
-  const seen = new WeakSet();
-
-  function walk(value: any, path = "") {
-    if (!value || typeof value !== OBJECT) return value;
-
-    if (seen.has(value)) return value;
-    seen.add(value);
-
-    // Block prototype pollution vectors early
-    const proto = Object.getPrototypeOf(value);
-    if (proto && proto !== Object.prototype && proto !== Array.prototype) {
-      throw new MutorError(
-        `Unsafe prototype detected at ${path || "root"} in context.`,
-      );
-    }
-
-    // Arrays
-    if (Array.isArray(value)) {
-      for (let i = 0; i < value.length; i++) {
-        value[i] = walk(value[i], `${path}[${i}]`);
-      }
-      return value;
-    }
-
-    // Maps
-    if (value instanceof Map) {
-      for (const [k, v] of value.entries()) {
-        if (typeof k === OBJECT) walk(k, `${path}.mapKey`);
-        value.set(k, walk(v, `${path}.mapValue`));
-      }
-      return value;
-    }
-
-    // Sets
-    if (value instanceof Set) {
-      const next = new Set();
-      for (const v of value.values()) {
-        next.add(walk(v, path));
-      }
-      value.clear();
-      for (const v of next) value.add(v);
-      return value;
-    }
-
-    // Plain object validation
-    const descriptors = Object.getOwnPropertyDescriptors(value);
-
-    for (const key of Object.keys(descriptors)) {
-      const desc = descriptors[key];
-
-      // Block getters/setters
-      if (desc.get || desc.set) {
-        throw new MutorError(
-          `Getter/setter not allowed at '${path}.${key}' in context.`,
-        );
-      }
-
-      const prop = value[key];
-
-      if (prop && typeof prop === OBJECT) {
-        value[key] = walk(prop, `${path}.${key}`);
-      }
-    }
-
-    return value;
   }
 
   const safeData = walk(ctx);

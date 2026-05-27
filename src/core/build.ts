@@ -1,6 +1,7 @@
 import { ExprType, LoopType } from "../types/enums";
 import type {
   BuildContext,
+  BuildState,
   CallExpr,
   ElseIfExpr,
   Expr,
@@ -13,149 +14,140 @@ import type {
 import escapeRawText from "../utils/escape-raw-text";
 import { MutorError } from "./error";
 
-/**
- * Builds JavaScript code from an AST.
- * Handles property access protection, scope-based ctx prefixing, control flow, and loops.
- * @param ast The abstract syntax tree
- * @param context The build context containing scope, forbidden/allowed properties
- * @returns Generated JavaScript code as a string
- */
-export default function build(
-  ast: Expr | any, // any to handle control flow nodes not yet in AST types
-  context: BuildContext,
-): string {
-  const { scope, forbiddenProps, allowedProps } = context;
+function prefixWithCtx(state: BuildState, ident: string): string {
+  return state.scope.includes(ident) ? ident : `ctx.${ident}`;
+}
 
-  function prefixWithCtx(ident: string): string {
-    return scope.includes(ident) ? ident : `ctx.${ident}`;
+function buildNamespace(expr: NamespaceExpr): string {
+  if (expr.left.type !== ExprType.IDENT) {
+    throw {
+      message: "Invalid usage of namespace operator.",
+      pos: expr.pos,
+    };
+  }
+  const leftValue = (expr.left as IdentExpr).value;
+  const rightValue = (expr.right as IdentExpr).value;
+  return `namespaces.${leftValue}.${rightValue}`;
+}
+
+function buildPropAccess(state: BuildState, expr: PropAccessExpr): string {
+  const left = buildExpr(state, expr.left);
+  const optionalChain = expr.optional ? "?." : "";
+
+  if (expr.bracketNotation) {
+    const right = buildExpr(state, expr.right);
+    return expr.right.type === ExprType.STRING ||
+      expr.right.type === ExprType.NUMBER
+      ? `${left}${optionalChain}[${right}]`
+      : `${left}${optionalChain}[validateComputedProps(${right}, ${state.allowedProps}, ${state.forbiddenProps})]`;
   }
 
-  function buildExpr(expr: Expr): string {
-    switch (expr.type) {
-      case ExprType.END:
-        return "}";
+  const propName = (expr.right as IdentExpr).value;
 
-      case ExprType.NUMBER:
-        return expr.value;
+  if (state.forbiddenProps.has(propName) && !state.allowedProps.has(propName)) {
+    throw { message: "Forbidden property access.", pos: expr.right.pos };
+  }
 
-      case ExprType.STRING:
-        return `\`${/\$\\/.test(expr.value) ? escapeRawText(expr.value) : expr.value}\``;
+  return `${left}${optionalChain}.${propName}`;
+}
 
-      case ExprType.BOOLEAN:
-        return (expr as any).true ? "true" : "false";
+function buildCall(state: BuildState, expr: CallExpr): string {
+  const func = buildExpr(state, expr.expr);
+  const optionalChain = expr.optional ? "?." : "";
+  const args = (expr.args as Expr[])
+    .map((arg: Expr) => buildExpr(state, arg))
+    .join(", ");
 
-      case ExprType.NULL:
-        return "null";
+  return `${func}${optionalChain}(${args})`;
+}
 
-      case ExprType.UNDEFINED:
-        return "undefined";
+function buildForLoop(state: BuildState, expr: ForExpr): string {
+  const { iterable, loopType, variable } = expr;
+  const loopOperator = loopType === LoopType.IN ? "in" : "of";
+  return `for(const ${variable} ${loopOperator} ${build(iterable, state.context)}){`;
+}
 
-      case ExprType.IDENT:
-        return prefixWithCtx((expr as any).value);
+function buildIfBlock(state: BuildState, expr: IfExpr): string {
+  const { condition } = expr;
+  return `if(${build(condition, state.context)}){`;
+}
 
-      case ExprType.GROUP:
-        return `(${buildExpr((expr as any).expr)})`;
+function buildElseIfBlock(state: BuildState, expr: ElseIfExpr): string {
+  const { condition } = expr;
+  return `}else if(${build(condition, state.context)}){`;
+}
 
-      case ExprType.UNARY:
-        return `${(expr as any).operator}${buildExpr((expr as any).expr)}`;
+function buildExpr(state: BuildState, expr: Expr): string {
+  const { type } = expr;
 
-      case ExprType.BINARY:
-        return `${buildExpr((expr as any).left)} ${(expr as any).operator} ${buildExpr((expr as any).right)}`;
+  if (type === ExprType.NUMBER) return expr.value;
+  if (type === ExprType.NULL) return "null";
+  if (type === ExprType.UNDEFINED) return "undefined";
+  if (type === ExprType.BOOLEAN) return (expr as any).true ? "true" : "false";
 
-      case ExprType.TERNARY:
-        return `${buildExpr((expr as any).condition)} ? ${buildExpr((expr as any).left)} : ${buildExpr((expr as any).right)}`;
+  switch (type) {
+    case ExprType.END:
+      return "}";
 
-      case ExprType.PROP_ACCESS:
-        return buildPropAccess(expr);
+    case ExprType.STRING:
+      return `\`${/\$\\/.test(expr.value) ? escapeRawText(expr.value) : expr.value}\``;
 
-      case ExprType.CALL:
-        return buildCall(expr);
+    case ExprType.IDENT:
+      return prefixWithCtx(state, (expr as any).value);
 
-      case ExprType.NAMESPACE:
-        return buildNamespace(expr);
+    case ExprType.GROUP:
+      return `(${buildExpr(state, (expr as any).expr)})`;
 
-      case ExprType.FOR:
-        return buildForLoop(expr);
-
-      case ExprType.ELSE:
-        return "} else {";
-
-      case ExprType.IF:
-        return buildIfBlock(expr);
-
-      case ExprType.ELSE_IF:
-        return buildElseIfBlock(expr);
-
-      default:
-        throw new MutorError(
-          `Unsupported expression type '${(expr as any).type}'`,
-        );
+    case ExprType.UNARY: {
+      const { operator, expr: innerExpr } = expr as any;
+      return `${operator}${buildExpr(state, innerExpr)}`;
     }
-  }
 
-  function buildNamespace(expr: NamespaceExpr) {
-    if (expr.left.type !== ExprType.IDENT) {
-      throw {
-        message: "Invalid usage of namespace operator.",
-        pos: expr.pos,
-      };
+    case ExprType.BINARY: {
+      const { left, operator, right } = expr as any;
+      return `${buildExpr(state, left)} ${operator} ${buildExpr(state, right)}`;
     }
-    return `namespaces.${(expr.left as IdentExpr).value}.${(expr.right as IdentExpr).value}`;
-  }
 
-  function buildPropAccess(expr: PropAccessExpr): string {
-    const left = buildExpr(expr.left);
-
-    if (expr.bracketNotation) {
-      // Bracket notation: evaluate the expression and check the resolved value at runtime
-      const right = buildExpr(expr.right);
-      const optionalChain = expr.optional ? "?." : "";
-
-      return expr.right.type === ExprType.STRING ||
-        expr.right.type === ExprType.NUMBER
-        ? `${left}${optionalChain}[${right}]`
-        : `${left}${optionalChain}[validateComputedProps(${right}, allowedProps, forbiddenProps)]`;
-    } else {
-      // Dot notation: static property name - check at build time
-      const propName = (expr.right as IdentExpr).value; // Assuming right is always IDENT in dot notation
-      const optionalChain = expr.optional ? "?." : ".";
-
-      // Block access to forbidden prototype properties at build time
-      if (forbiddenProps.has(propName) && !allowedProps.has(propName)) {
-        throw { message: "Forbidden property access.", pos: expr.right.pos };
-      }
-
-      return `${left}${optionalChain}${propName}`;
+    case ExprType.TERNARY: {
+      const { condition, left, right } = expr as any;
+      return `${buildExpr(state, condition)} ? ${buildExpr(state, left)} : ${buildExpr(state, right)}`;
     }
+
+    case ExprType.PROP_ACCESS:
+      return buildPropAccess(state, expr as PropAccessExpr);
+
+    case ExprType.CALL:
+      return buildCall(state, expr as CallExpr);
+
+    case ExprType.NAMESPACE:
+      return buildNamespace(expr as NamespaceExpr);
+
+    case ExprType.FOR:
+      return buildForLoop(state, expr as ForExpr);
+
+    case ExprType.ELSE:
+      return "} else {";
+
+    case ExprType.IF:
+      return buildIfBlock(state, expr as IfExpr);
+
+    case ExprType.ELSE_IF:
+      return buildElseIfBlock(state, expr as ElseIfExpr);
+
+    default:
+      throw new MutorError(`Unsupported expression type '${type}'`);
   }
+}
 
-  function buildCall(expr: CallExpr): string {
-    const func = buildExpr(expr.expr);
-    const optionalChain = expr.optional ? "?." : "";
+export default function build(ast: Expr, context: BuildContext): string {
+  const state: BuildState = {
+    scope: context.scope,
+    forbiddenProps: context.forbiddenProps,
+    allowedProps: context.allowedProps,
+    context,
+  };
 
-    const args = (expr.args as Expr[])
-      .map((arg: Expr) => buildExpr(arg))
-      .join(", ");
-
-    return `${func}${optionalChain}(${args})`;
-  }
-
-  function buildForLoop(expr: ForExpr) {
-    const { iterable, loopType, variable } = expr;
-    return `for(const ${variable} ${loopType === LoopType.IN ? "in" : "of"} ${build(iterable, context)}){`;
-  }
-
-  function buildIfBlock(expr: IfExpr) {
-    const { condition } = expr;
-    return `if(${build(condition, context)}){`;
-  }
-
-  function buildElseIfBlock(expr: ElseIfExpr) {
-    const { condition } = expr;
-    return `}else if(${build(condition, context)}){`;
-  }
-
-  const result = buildExpr(ast);
+  const result = buildExpr(state, ast);
   return result.includes("namespaces.Mutor.await")
     ? result.replaceAll(
         "namespaces.Mutor.await",

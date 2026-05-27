@@ -2,10 +2,12 @@ import { TokenType } from "../types/enums";
 import type { Token } from "../types/types";
 import { keywords, operators } from "./constants";
 
-/**
- * Converts a given expression to a stream of allowed tokens.
- * @param expr A code expression (e.g `for user of users`).
- */
+const IDENT_START_PATTERN = /[a-zA-Z$_]/;
+const IDENT_PATTERN = /[a-zA-Z$_0-9]/;
+const NUMBER_START_PATTERN = /[0-9]/;
+const NUMBER_PATTERN = /[0-9.oxe]/;
+const VALIDATION_PATTERN = /[a-zA-Z$_0-9\s\t\r\n'"`]/;
+
 export default function tokenize(expr: string) {
   let cursor = 0,
     char = "";
@@ -13,9 +15,9 @@ export default function tokenize(expr: string) {
 
   function accumulateKeywordOrIdentifier() {
     let buffer = "";
-    if (/[a-zA-Z$_]/.test(char)) {
+    if (IDENT_START_PATTERN.test(char)) {
       let j = cursor;
-      while (/[a-zA-Z$_0-9]/.test(expr[j]) && j < expr.length) {
+      while (IDENT_PATTERN.test(expr[j]) && j < expr.length) {
         buffer += expr[j];
         j++;
       }
@@ -90,11 +92,11 @@ export default function tokenize(expr: string) {
   }
 
   function accumulateNumber() {
-    if (/[0-9]/.test(char)) {
+    if (NUMBER_START_PATTERN.test(char)) {
       let j = cursor,
         buffer = "";
 
-      while (/[0-9.oxe]/.test(expr[j]) && j < expr.length) {
+      while (NUMBER_PATTERN.test(expr[j]) && j < expr.length) {
         buffer += expr[j];
         j++;
       }
@@ -135,7 +137,7 @@ export default function tokenize(expr: string) {
     accumulateOperator();
 
     if (
-      !/[a-zA-Z$_0-9\s\t\r\n'"`]/.test(char) &&
+      !VALIDATION_PATTERN.test(char) &&
       !operators.has(char) &&
       !operators.has(expr[cursor - 1] + char)
     ) {
