@@ -11,19 +11,17 @@ import type {
 import { getTokenTypeWords } from "../utils/get-token-type-words";
 import {
   additiveOperators,
+  bitwiseAndOperators,
+  bitwiseOperators,
+  bitwiseOrOperators,
+  bitwiseXorOperators,
   comparisonOperators,
   equalityOperators,
+  exponentiationOperators,
   multiplicativeOperators,
   propertyAccessOperators,
   unaryOperators,
 } from "./constants";
-
-/**
- * Generates an abstract syntax tree from a stream of tokens. Validating structure as it does so.
- * @param tokens The stream of tokens
- * @param config Configuration option
- * @returns
- */
 
 function expectOrThrow(state: ParseState, type: TokenType): Token;
 function expectOrThrow(
@@ -185,7 +183,7 @@ function parsePrimaryExpr(state: ParseState): Expr {
   }
 
   if (token.type === TokenType.OPERATOR && unaryOperators.has(token.value)) {
-    const expr = parseTernaryExpr(state);
+    const expr = parsePropertyAccess(state);
     return {
       type: ExprType.UNARY,
       operator: token.value,
@@ -364,8 +362,16 @@ function parseBinaryExpr(
   return left;
 }
 
+function parseExponentiationExpr(state: ParseState): Expr {
+  return parseBinaryExpr(state, parsePropertyAccess, exponentiationOperators);
+}
+
 function parseMultiplicativeExpr(state: ParseState): Expr {
-  return parseBinaryExpr(state, parsePropertyAccess, multiplicativeOperators);
+  return parseBinaryExpr(
+    state,
+    parseExponentiationExpr,
+    multiplicativeOperators,
+  );
 }
 
 function parseAdditiveExpr(state: ParseState): Expr {
@@ -373,7 +379,7 @@ function parseAdditiveExpr(state: ParseState): Expr {
 }
 
 function parseBitwiseExpr(state: ParseState): Expr {
-  return parseBinaryExpr(state, parseAdditiveExpr, comparisonOperators);
+  return parseBinaryExpr(state, parseAdditiveExpr, bitwiseOperators);
 }
 
 function parseComparisonExpr(state: ParseState): Expr {
@@ -384,8 +390,20 @@ function parseEqualityExpr(state: ParseState): Expr {
   return parseBinaryExpr(state, parseComparisonExpr, equalityOperators);
 }
 
+function parseBitwiseOrExpr(state: ParseState): Expr {
+  return parseBinaryExpr(state, parseBitwiseXorExpr, bitwiseOrOperators);
+}
+
+function parseBitwiseXorExpr(state: ParseState): Expr {
+  return parseBinaryExpr(state, parseBitwiseAndExpr, bitwiseXorOperators);
+}
+
+function parseBitwiseAndExpr(state: ParseState): Expr {
+  return parseBinaryExpr(state, parseEqualityExpr, bitwiseAndOperators);
+}
+
 function parseLogicalAndExpr(state: ParseState): Expr {
-  let left = parseEqualityExpr(state);
+  let left = parseBitwiseOrExpr(state);
 
   while (
     state.tokens[state.cursor]?.type === TokenType.OPERATOR &&

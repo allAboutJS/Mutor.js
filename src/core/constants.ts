@@ -54,7 +54,7 @@ export const equalityOperators = new Set(["==", "!="]);
 
 export const comparisonOperators = new Set([">", "<", ">=", "<="]);
 
-export const bitwiseOperators = new Set([">>", "<<"]);
+export const bitwiseOperators = new Set([">>", "<<", "^", "|", "&"]);
 
 export const additiveOperators = new Set(["+", "-"]);
 
@@ -63,6 +63,14 @@ export const multiplicativeOperators = new Set(["*", "/", "%"]);
 export const propertyAccessOperators = new Set([".", "?.", "[", "::"]);
 
 export const unaryOperators = new Set(["-", "+", "!"]);
+
+export const bitwiseOrOperators = new Set(["|"]);
+
+export const bitwiseXorOperators = new Set(["^"]);
+
+export const bitwiseAndOperators = new Set(["&"]);
+
+export const exponentiationOperators = new Set(["**"]);
 
 export const ESCAPE_MAP: Record<string, string> = {
   "&": "&amp;",
@@ -254,21 +262,20 @@ export const namespaces = {
       ) {
         throw new MutorError("Array::range expects finite numbers");
       }
-
       if (step === 0) {
         throw new MutorError("Array::range step cannot be 0");
       }
 
-      const result = [];
+      // Validate directionality to prevent infinite loops
+      if ((start <= end && step < 0) || (start > end && step > 0)) {
+        throw new MutorError(
+          "Invalid step direction: step must match range direction",
+        );
+      }
 
-      if (start <= end) {
-        for (let i = start; i <= end; i += step) {
-          result.push(i);
-        }
-      } else {
-        for (let i = start; i >= end; i -= Math.abs(step)) {
-          result.push(i);
-        }
+      const result = [];
+      for (let i = start; start <= end ? i <= end : i >= end; i += step) {
+        result.push(i);
       }
 
       return result;
@@ -375,6 +382,8 @@ export const namespaces = {
     random() {
       return Math.random();
     },
+
+    PI: Math.PI,
   },
 
   Date: {
@@ -399,7 +408,10 @@ export const namespaces = {
     },
 
     iso(date?: string | number | Date) {
-      return new Date(date ?? Date.now()).toISOString();
+      const d = new Date(date ?? Date.now());
+      if (Number.isNaN(d.getTime()))
+        throw new MutorError("Invalid date provided to Date::iso");
+      return d.toISOString();
     },
 
     timestamp(date?: string | number | Date) {
@@ -410,32 +422,6 @@ export const namespaces = {
   Boolean: {
     valueOf(value: any) {
       return Boolean(value);
-    },
-  },
-
-  RegExp: {
-    test(pattern: string, value: string, flags = "") {
-      if (typeof pattern !== "string") {
-        throw new MutorError("RegExp::test expects a pattern string");
-      }
-
-      if (typeof value !== "string") {
-        throw new MutorError("RegExp::test expects a value string");
-      }
-
-      return new RegExp(pattern, flags).test(value);
-    },
-
-    match(pattern: string, value: string, flags = "") {
-      if (typeof pattern !== "string") {
-        throw new MutorError("RegExp::match expects a pattern string");
-      }
-
-      if (typeof value !== "string") {
-        throw new MutorError("RegExp::match expects a value string");
-      }
-
-      return value.match(new RegExp(pattern, flags));
     },
   },
 

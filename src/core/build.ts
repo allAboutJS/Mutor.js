@@ -14,8 +14,15 @@ import type {
 import escapeRawText from "../utils/escape-raw-text";
 import { MutorError } from "./error";
 
-function prefixWithCtx(state: BuildState, ident: string): string {
-  return state.scope.includes(ident) ? ident : `ctx.${ident}`;
+function prefixWithCtx(state: BuildState, expr: IdentExpr): string {
+  if (
+    state.forbiddenProps.has(expr.value) &&
+    !state.allowedProps.has(expr.value)
+  ) {
+    throw { message: `Property "${expr.value}" is forbidden.`, pos: expr.pos };
+  }
+
+  return state.scope.includes(expr.value) ? expr.value : `ctx.${expr.value}`;
 }
 
 function buildNamespace(expr: NamespaceExpr): string {
@@ -36,10 +43,21 @@ function buildPropAccess(state: BuildState, expr: PropAccessExpr): string {
 
   if (expr.bracketNotation) {
     const right = buildExpr(state, expr.right);
+
+    if (
+      expr.right.type === ExprType.STRING &&
+      state.forbiddenProps.has(right.replaceAll(/^`|`$/gm, ""))
+    ) {
+      throw {
+        message: "Forbidden property access.",
+        pos: expr.right.pos,
+      };
+    }
+
     return expr.right.type === ExprType.STRING ||
       expr.right.type === ExprType.NUMBER
       ? `${left}${optionalChain}[${right}]`
-      : `${left}${optionalChain}[validateComputedProps(${right}, ${state.allowedProps}, ${state.forbiddenProps})]`;
+      : `${left}${optionalChain}[validateComputedProps(${right}, allowedProps, forbiddenProps)]`;
   }
 
   const propName = (expr.right as IdentExpr).value;
@@ -93,7 +111,7 @@ function buildExpr(state: BuildState, expr: Expr): string {
       return `\`${/\$\\/.test(expr.value) ? escapeRawText(expr.value) : expr.value}\``;
 
     case ExprType.IDENT:
-      return prefixWithCtx(state, (expr as any).value);
+      return prefixWithCtx(state, expr);
 
     case ExprType.GROUP:
       return `(${buildExpr(state, (expr as any).expr)})`;

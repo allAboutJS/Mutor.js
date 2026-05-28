@@ -43,4 +43,17 @@ describe("Mutor Rendering Logic", () => {
     const result = engine.render('{{ Mutor::include("alert", "Hello") }}', {});
     expect(result).toBe('<div class="alert">Hello</div>');
   });
+  test("should handle ternary and nullish coalescing operators", () => {
+    expect(engine.render("{{ true ? 'yes' : 'no' }}", {})).toBe("yes");
+    expect(engine.render("{{ false ? 'yes' : 'no' }}", {})).toBe("no");
+    expect(engine.render("{{ null ?? 'fallback' }}", {})).toBe("fallback");
+    expect(engine.render("{{ undefined ?? 'fallback' }}", {})).toBe("fallback");
+    expect(engine.render("{{ 'value' ?? 'fallback' }}", {})).toBe("value");
+  });
+
+  test("should handle complex logical expressions", () => {
+    const context = { a: true, b: false, c: true };
+    expect(engine.render("{{ a && b || c }}", context)).toBe("true");
+    expect(engine.render("{{ a && (b || c) }}", context)).toBe("true");
+  });
 });

@@ -1,13 +1,5 @@
 import { readFileSync, statSync, writeFileSync } from "node:fs";
 import {
-  beforeEach,
-  describe,
-  expect,
-  it,
-  type MockedFunction,
-  vi,
-} from "vitest";
-import {
   handleBuildCommand,
   handleCompileCommand,
   handleRenderCommand,
@@ -26,28 +18,33 @@ import type { CommandStruct } from "../types/types";
 
 // Module mocks
 
-vi.mock("fs", () => ({
-  readFileSync: vi.fn(),
-  writeFileSync: vi.fn(),
-  statSync: vi.fn(),
-  rmSync: vi.fn(),
+jest.mock("node:fs", () => ({
+  readFileSync: jest.fn(),
+  writeFileSync: jest.fn(),
+  statSync: jest.fn(),
+  rmSync: jest.fn(),
 }));
 
-vi.mock("../utils/to-absolute-path", () => ({
+jest.mock("../utils/to-absolute-path", () => ({
+  __esModule: true,
   default: (p: string) => `/abs/${p}`,
 }));
 
-const mockReadFileSync = readFileSync as MockedFunction<typeof readFileSync>;
-const mockWriteFileSync = writeFileSync as MockedFunction<typeof writeFileSync>;
-const mockStatSync = statSync as MockedFunction<typeof statSync>;
+const mockReadFileSync = readFileSync as jest.MockedFunction<
+  typeof readFileSync
+>;
+const mockWriteFileSync = writeFileSync as jest.MockedFunction<
+  typeof writeFileSync
+>;
+const mockStatSync = statSync as jest.MockedFunction<typeof statSync>;
 
 /** Minimal Mutor stub — override methods per test as needed. */
 function makeMutor() {
   return {
-    addConfig: vi.fn(),
-    compile: vi.fn().mockReturnValue({ toString: () => "<compiled>" }),
-    buildDir: vi.fn().mockResolvedValue(undefined),
-    render: vi.fn().mockResolvedValue({ toString: () => "<rendered>" }),
+    addConfig: jest.fn(),
+    compile: jest.fn().mockReturnValue({ toString: () => "<compiled>" }),
+    buildDir: jest.fn().mockResolvedValue(undefined),
+    render: jest.fn().mockReturnValue("<rendered>"),
   };
 }
 
@@ -61,10 +58,6 @@ const asDir = () =>
   ({ isFile: () => false, isDirectory: () => true }) as ReturnType<
     typeof statSync
   >;
-
-// ---------------------------------------------------------------------------
-// parseArgs
-// ---------------------------------------------------------------------------
 
 describe("parseArgs", () => {
   it("parses a minimal compile command", () => {
@@ -96,10 +89,10 @@ describe("parseArgs", () => {
   });
 
   it("prints version and exits 0 on --version", () => {
-    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+    const consoleSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+    const exitSpy = jest.spyOn(process, "exit").mockImplementation((() => {
       throw new Error("exit");
-    });
+    }) as any);
     expect(() => parseArgs(["--version"])).toThrow("exit");
     expect(consoleSpy).toHaveBeenCalledWith(
       expect.stringMatching(/\d+\.\d+\.\d+/),
@@ -110,10 +103,10 @@ describe("parseArgs", () => {
   });
 
   it("prints usage and exits 0 on --help", () => {
-    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+    const consoleSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+    const exitSpy = jest.spyOn(process, "exit").mockImplementation((() => {
       throw new Error("exit");
-    });
+    }) as any);
     expect(() => parseArgs(["--help"])).toThrow("exit");
     expect(consoleSpy).toHaveBeenCalled();
     expect(exitSpy).toHaveBeenCalledWith(0);
@@ -152,12 +145,8 @@ describe("parseArgs", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// safeReadFile
-// ---------------------------------------------------------------------------
-
 describe("safeReadFile", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => jest.clearAllMocks());
 
   it("returns file contents on success", () => {
     mockReadFileSync.mockReturnValue("hello");
@@ -181,12 +170,8 @@ describe("safeReadFile", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// safeWriteFile
-// ---------------------------------------------------------------------------
-
 describe("safeWriteFile", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => jest.clearAllMocks());
 
   it("calls writeFileSync with correct arguments", () => {
     mockWriteFileSync.mockReturnValue(undefined);
@@ -206,12 +191,8 @@ describe("safeWriteFile", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// safeParseJsonFile
-// ---------------------------------------------------------------------------
-
 describe("safeParseJsonFile", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => jest.clearAllMocks());
 
   it("returns parsed JSON on valid input", () => {
     mockReadFileSync.mockReturnValue('{"key":"value"}');
@@ -231,12 +212,8 @@ describe("safeParseJsonFile", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// handleCompileCommand
-// ---------------------------------------------------------------------------
-
 describe("handleCompileCommand", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => jest.clearAllMocks());
 
   it("writes compiled output to --out when provided", () => {
     mockStatSync.mockReturnValue(asFile());
@@ -265,7 +242,7 @@ describe("handleCompileCommand", () => {
     mockReadFileSync.mockReturnValue("<template>");
 
     const mutor = makeMutor();
-    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const consoleSpy = jest.spyOn(console, "log").mockImplementation(() => {});
 
     handleCompileCommand(mutor as never, {
       command: "compile",
@@ -309,12 +286,8 @@ describe("handleCompileCommand", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// handleBuildCommand
-// ---------------------------------------------------------------------------
-
 describe("handleBuildCommand", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => jest.clearAllMocks());
 
   const validArgs: CommandStruct = {
     command: "build",
@@ -378,12 +351,8 @@ describe("handleBuildCommand", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// handleRenderCommand
-// ---------------------------------------------------------------------------
-
 describe("handleRenderCommand", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => jest.clearAllMocks());
 
   const validArgs: CommandStruct = {
     command: "render",
@@ -418,7 +387,7 @@ describe("handleRenderCommand", () => {
       .mockReturnValueOnce("<template>"); // template file
 
     const mutor = makeMutor();
-    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const consoleSpy = jest.spyOn(console, "log").mockImplementation(() => {});
 
     await handleRenderCommand(mutor as never, {
       command: "render",

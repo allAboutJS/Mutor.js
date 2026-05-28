@@ -85,7 +85,13 @@ export default class MutorServer extends MutorBase {
         this.__config.cache.active &&
         this.__compiledTemplatesMap.has(absolutePath)
       ) {
-        compiled = this.__compiledTemplatesMap.get(absolutePath)!.fn;
+        const entry = this.__compiledTemplatesMap.get(absolutePath)!;
+
+        compiled = entry.fn;
+
+        // Move to the front of the cache
+        this.__compiledTemplatesMap.delete(absolutePath);
+        this.__compiledTemplatesMap.set(absolutePath, entry);
       } else {
         const template = readFileSync(absolutePath, "utf-8");
         compiled = this.compile(template, runtime);

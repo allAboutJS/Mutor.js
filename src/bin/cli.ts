@@ -310,12 +310,14 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((err: unknown) => {
-  if (err instanceof CliError) {
-    console.error(`error: ${err.message}`);
-    exit(err.exitCode);
-  }
+if (process.env.NODE_ENV !== "test") {
+  main().catch((err: unknown) => {
+    if (err instanceof CliError) {
+      console.error(`error: ${err.message}`);
+      exit(err.exitCode);
+    }
 
-  console.error("unexpected error:", err);
-  exit(ExitCodes.RuntimeError);
-});
+    console.error("unexpected error:", err);
+    exit(ExitCodes.RuntimeError);
+  });
+}

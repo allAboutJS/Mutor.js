@@ -63,10 +63,7 @@ export default class MutorBase {
         ...defaultConfig.forbiddenProps,
         ...(forbiddenProps || []),
       ]),
-      keepOpeningTagEscapeDelimiter:
-        keepOpeningTagEscapeDelimiter === true
-          ? true
-          : keepOpeningTagEscapeDelimiter !== false,
+      keepOpeningTagEscapeDelimiter: keepOpeningTagEscapeDelimiter ?? false,
       delimiters: {
         ...defaultConfig.delimiters,
         ...(overrideDelimeters || {}),

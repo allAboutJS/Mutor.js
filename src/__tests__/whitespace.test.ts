@@ -33,4 +33,9 @@ describe("Mutor Whitespace Trimming", () => {
     // Should result in "Visible" without the newlines from the if/end tags
     expect(result.trim()).toBe("Visible");
   });
+  test("should handle consecutive tags with whitespace control", () => {
+    const template = "A {{~ 'B' ~}} {{~ 'C' ~}} D";
+    const result = engine.render(template, {});
+    expect(result).toBe("ABCD");
+  });
 });

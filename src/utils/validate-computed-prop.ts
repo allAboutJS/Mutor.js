@@ -1,13 +1,5 @@
 import { MutorError } from "../core/error";
 
-/**
- * Validates access to computed properties against a whitelist and blacklist.
- * @param r The property name or index being accessed.
- * @param forbiddenProps A set of restricted property names.
- * @param allowedProps A set of explicitly permitted property names.
- * @returns The property name if valid.
- * @throws Error if access is forbidden.
- */
 export default function validateComputedProp(
   r: string | number,
   allowedProps: Set<string | number>,
