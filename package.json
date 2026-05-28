@@ -1,6 +1,6 @@
 {
   "name": "mutorjs",
-  "version": "1.5.3",
+  "version": "1.5.4",
   "description": "A high-performance engine for secure templating.",
   "homepage": "https://github.com/allAboutJS/Mutor.js#readme",
   "bugs": {
