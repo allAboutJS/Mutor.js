@@ -82,7 +82,13 @@ function buildCall(state: BuildState, expr: CallExpr): string {
 function buildForLoop(state: BuildState, expr: ForExpr): string {
   const { iterable, loopType, variable } = expr;
   const loopOperator = loopType === LoopType.IN ? "in" : "of";
-  return `for(const ${variable} ${loopOperator} ${build(iterable, state.context)}){`;
+  const iterableValue = build(iterable, state.context);
+
+  if (loopOperator === "of") {
+    return `for(let i=0;i<${iterableValue}.length;i++){const ${variable}=${iterableValue}[i];namespaces.Mutor.iter.index=i;`;
+  }
+
+  return `for(const ${variable} in ${iterableValue}){`;
 }
 
 function buildIfBlock(state: BuildState, expr: IfExpr): string {

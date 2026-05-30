@@ -6,7 +6,6 @@ import type {
 import createRuntimeFrame from "../utils/create-runtime";
 import escapeFn from "../utils/escape-fn";
 import validateComputedProp from "../utils/validate-computed-prop";
-import validateContext from "../utils/validate-context";
 import compile from "./compile";
 import { defaultConfig, namespaces } from "./constants";
 import { MutorCompilerError, MutorError } from "./error";
@@ -23,6 +22,9 @@ export default class MutorBase {
     Mutor: {
       await: async (value: any) => {
         return await value;
+      },
+      iter: {
+        index: null,
       },
     },
   };
@@ -43,6 +45,7 @@ export default class MutorBase {
       build,
       onIncludeFail,
       onIncludeError,
+      rootDir,
     } = conf;
 
     this.__config = {
@@ -53,6 +56,7 @@ export default class MutorBase {
           ...(build?.exclude || []),
         ]),
       },
+      rootDir,
       autoEscape: autoEscape === true ? true : autoEscape !== false,
       allowedProps: allowedProps || defaultConfig.allowedProps,
       allowFnCalls: !!allowFnCalls,
@@ -101,7 +105,7 @@ export default class MutorBase {
     const fn = this.compile(template, runtime);
 
     const result = fn(
-      validateContext(runtime.context),
+      runtime.context,
       this.__createNamespacesWithRuntime(runtime),
       this.__config.allowedProps,
       this.__config.forbiddenProps,

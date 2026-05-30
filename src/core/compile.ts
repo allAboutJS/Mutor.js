@@ -1,4 +1,4 @@
-import { BlockType } from "../types/enums";
+import { BlockType, LoopType } from "../types/enums";
 import type { CompileMetadata, ForExpr, MutorConfig } from "../types/types";
 import escapeRawText from "../utils/escape-raw-text";
 import getLineNumberAndIndex from "../utils/get-line-and-column-nums";
@@ -16,7 +16,11 @@ export default function compile(
   meta: CompileMetadata,
 ) {
   const scope: string[] = [];
-  const blockOpeningStack: { type: BlockType; pos: number }[] = [];
+  const blockOpeningStack: {
+    type: BlockType;
+    pos: number;
+    loopType: LoopType | undefined;
+  }[] = [];
   const {
     delimiters,
     keepOpeningTagEscapeDelimiter,
@@ -151,25 +155,41 @@ export default function compile(
 
         if (isBlock && requiresBlockClose && hasContext) {
           scope.push((ast as ForExpr).variable);
+
+          if ((ast as ForExpr).loopType === LoopType.OF) {
+            scope.push("index");
+          }
+
           blockOpeningStack.push({
             type: BlockType.LOOP,
             pos: templateOpenTagIdx,
+            loopType: (ast as ForExpr).loopType,
           });
         } else if (isBlock && requiresBlockClose && !hasContext) {
           blockOpeningStack.push({
             type: BlockType.NON_LOOP,
             pos: templateOpenTagIdx,
+            loopType: undefined,
           });
         }
 
         if (isBlockEnd) {
           const lastBlockOpened = blockOpeningStack.pop();
-          if (lastBlockOpened?.type === BlockType.LOOP) scope.pop();
-          if (lastBlockOpened === undefined)
+
+          if (lastBlockOpened?.type === BlockType.LOOP) {
+            scope.pop();
+            // Remove the loop index from the scope if it was pushed for OF loops
+            if (lastBlockOpened.loopType === LoopType.OF) {
+              scope.pop();
+            }
+          }
+
+          if (lastBlockOpened === undefined) {
             throw {
               message: "Unexpected end of block",
               pos: templateOpenTagIdx,
             };
+          }
         }
 
         const js = build(ast, { allowedProps, forbiddenProps, scope });

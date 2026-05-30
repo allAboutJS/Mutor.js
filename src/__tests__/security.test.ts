@@ -47,14 +47,4 @@ describe("Security Boundaries", () => {
       "Hello World",
     );
   });
-
-  test("rejects getters and setters in context", () => {
-    const context = {};
-    Object.defineProperty(context, "evil", {
-      get: () => "I am a getter",
-      enumerable: true,
-    });
-
-    expect(() => engine.render("{{ evil }}", context)).toThrow();
-  });
 });

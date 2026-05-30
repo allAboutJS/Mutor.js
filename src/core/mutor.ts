@@ -2,7 +2,6 @@ import type { PartialMutorConfig, RuntimeFrame } from "../types/types";
 import createRuntimeFrame from "../utils/create-runtime";
 import escapeFn from "../utils/escape-fn";
 import validateComputedProp from "../utils/validate-computed-prop";
-import validateContext from "../utils/validate-context";
 import { MutorError } from "./error";
 import MutorBase from "./mutor.base";
 
@@ -73,7 +72,7 @@ export default class Mutor extends MutorBase {
 
     try {
       const result = compiled.fn(
-        validateContext(runtime.context),
+        runtime.context,
         this.__createNamespacesWithRuntime(runtime),
         this.__config.allowedProps,
         this.__config.forbiddenProps,

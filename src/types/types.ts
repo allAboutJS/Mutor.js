@@ -163,6 +163,7 @@ export interface MutorConfig {
     active: boolean;
     maxSize: number;
   };
+  rootDir?: string;
   keepOpeningTagEscapeDelimiter: boolean;
   allowedProps: Set<string>;
   forbiddenProps: Set<string>;

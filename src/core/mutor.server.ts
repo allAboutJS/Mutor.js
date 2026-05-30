@@ -12,7 +12,6 @@ import createRuntimeFrame from "../utils/create-runtime";
 import escapeFn from "../utils/escape-fn";
 import toAbsolutePath from "../utils/to-absolute-path";
 import validateComputedProp from "../utils/validate-computed-prop";
-import validateContext from "../utils/validate-context";
 import { MutorError } from "./error";
 import MutorBase from "./mutor.base";
 
@@ -21,13 +20,22 @@ export default class MutorServer extends MutorBase {
     super(config);
   }
 
-  /**
-   * Set up the include namespace with the given runtime.
-   * This must be done before rendering to ensure includes have access to the runtime.
-   */
+  private __resolvePath(path: string, renderedPath: string) {
+    const isAlias = path.startsWith("@/");
+    const root = this.__config.rootDir
+      ? toAbsolutePath(this.__config.rootDir)
+      : process.cwd();
+
+    const resolvedPath = isAlias
+      ? join(root, path.replace(/^@\//, "./"))
+      : toAbsolutePath(renderedPath, path);
+
+    return resolvedPath;
+  }
+
   private __setupIncludeForRuntime(runtime: RuntimeFrame) {
     this.__namespaces.Mutor.include = (path: string, context: any) => {
-      const resolvedPath = toAbsolutePath(runtime.renderedPath, path);
+      const resolvedPath = this.__resolvePath(path, runtime.renderedPath);
 
       if (runtime.includeStack.has(resolvedPath)) {
         throw new MutorError(
@@ -69,7 +77,7 @@ export default class MutorServer extends MutorBase {
   private __renderFile(path: string, context: any, runtime: RuntimeFrame) {
     this.__setupIncludeForRuntime(runtime);
 
-    const absolutePath = toAbsolutePath(path);
+    const absolutePath = this.__resolvePath(path, "");
     let compiled: Function;
 
     // Save previous state for nested renders
@@ -118,7 +126,7 @@ export default class MutorServer extends MutorBase {
       }
 
       const result = compiled(
-        validateContext(runtime.context),
+        runtime.context,
         this.__createNamespacesWithRuntime(runtime),
         this.__config.allowedProps,
         this.__config.forbiddenProps,
@@ -195,10 +203,8 @@ export default class MutorServer extends MutorBase {
         const extension = extname(absoluteSrcPath);
 
         if (this.__config.build.include.has(extension)) {
-          try {
-            const template = await readFile(absoluteSrcPath, "utf-8");
-            this.register(absoluteSrcPath, template);
-          } catch {}
+          const template = await readFile(absoluteSrcPath, "utf-8");
+          this.register(absoluteSrcPath, template);
         }
       }),
     );

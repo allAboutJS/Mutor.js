@@ -30,12 +30,13 @@ export default function parse(
     rightTrim,
     inner,
     isBlock:
-      trimmed.startsWith("for") ||
-      trimmed.startsWith("if") ||
-      trimmed.startsWith("else"),
+      trimmed.startsWith("for ") ||
+      trimmed.startsWith("if ") ||
+      trimmed === "else" ||
+      trimmed.startsWith("else if "),
     isBlockEnd: trimmed === "end",
-    hasContext: trimmed.startsWith("for"),
-    requiresBlockClose: trimmed.startsWith("for") || trimmed.startsWith("if"),
+    hasContext: trimmed.startsWith("for "),
+    requiresBlockClose: trimmed.startsWith("for ") || trimmed.startsWith("if "),
     usesAwait: inner.includes("Mutor::await"),
   };
 }
