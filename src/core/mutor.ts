@@ -29,7 +29,7 @@ export default class Mutor extends MutorBase {
           runtime,
         );
       } catch (err) {
-        return this.handleError(err, previousPath, path, undefined);
+        return this.__handleError(err, previousPath, path, undefined);
       } finally {
         runtime.includeStack.delete(path);
         runtime.renderedPath = previousPath;
@@ -71,6 +71,8 @@ export default class Mutor extends MutorBase {
     runtime.renderedPath = identifier;
 
     try {
+      this.__setupIncludeForRuntime(runtime);
+
       const result = compiled.fn(
         runtime.context,
         this.__createNamespacesWithRuntime(runtime),
@@ -103,6 +105,6 @@ export default class Mutor extends MutorBase {
   }
 
   registerComponent(identifier: string, template: string) {
-    return this.register(identifier, template);
+    return this.__register(identifier, template);
   }
 }

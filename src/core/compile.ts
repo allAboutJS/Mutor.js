@@ -1,4 +1,4 @@
-import { BlockType, LoopType } from "../types/enums";
+import { BlockType, type LoopType } from "../types/enums";
 import type { CompileMetadata, ForExpr, MutorConfig } from "../types/types";
 import escapeRawText from "../utils/escape-raw-text";
 import getLineNumberAndIndex from "../utils/get-line-and-column-nums";
@@ -36,7 +36,7 @@ export default function compile(
   // Whitespace control state
   let trimNext = false,
     cursor = 0,
-    body = `let acc="";`;
+    body = `let acc="",prevLoopIndex=undefined;`;
 
   while (cursor < src.length) {
     const templateOpenTagIdx = src.indexOf(delimiters.openingTag, cursor);
@@ -156,10 +156,6 @@ export default function compile(
         if (isBlock && requiresBlockClose && hasContext) {
           scope.push((ast as ForExpr).variable);
 
-          if ((ast as ForExpr).loopType === LoopType.OF) {
-            scope.push("index");
-          }
-
           blockOpeningStack.push({
             type: BlockType.LOOP,
             pos: templateOpenTagIdx,
@@ -176,19 +172,19 @@ export default function compile(
         if (isBlockEnd) {
           const lastBlockOpened = blockOpeningStack.pop();
 
-          if (lastBlockOpened?.type === BlockType.LOOP) {
-            scope.pop();
-            // Remove the loop index from the scope if it was pushed for OF loops
-            if (lastBlockOpened.loopType === LoopType.OF) {
-              scope.pop();
-            }
-          }
-
           if (lastBlockOpened === undefined) {
             throw {
               message: "Unexpected end of block",
               pos: templateOpenTagIdx,
             };
+          }
+
+          if (lastBlockOpened?.type === BlockType.LOOP) {
+            scope.pop();
+            // Reset the index tracker to the parent loops index if available
+            // Will cause stale indexes outside of loops
+            body += "};namespaces.Mutor.iter.index=prevLoopIndex;";
+            continue;
           }
         }
 

@@ -14,6 +14,8 @@ import type {
 import escapeRawText from "../utils/escape-raw-text";
 import { MutorError } from "./error";
 
+const BACKTICK_REGEX = /^`|`$/gm;
+
 function prefixWithCtx(state: BuildState, expr: IdentExpr): string {
   if (
     state.forbiddenProps.has(expr.value) &&
@@ -26,12 +28,6 @@ function prefixWithCtx(state: BuildState, expr: IdentExpr): string {
 }
 
 function buildNamespace(expr: NamespaceExpr): string {
-  if (expr.left.type !== ExprType.IDENT) {
-    throw {
-      message: "Invalid usage of namespace operator.",
-      pos: expr.pos,
-    };
-  }
   const leftValue = (expr.left as IdentExpr).value;
   const rightValue = (expr.right as IdentExpr).value;
   return `namespaces.${leftValue}.${rightValue}`;
@@ -46,7 +42,8 @@ function buildPropAccess(state: BuildState, expr: PropAccessExpr): string {
 
     if (
       expr.right.type === ExprType.STRING &&
-      state.forbiddenProps.has(right.replaceAll(/^`|`$/gm, ""))
+      state.forbiddenProps.has(right.replaceAll(BACKTICK_REGEX, "")) &&
+      !state.allowedProps.has(right.replaceAll(BACKTICK_REGEX, ""))
     ) {
       throw {
         message: "Forbidden property access.",
@@ -66,7 +63,7 @@ function buildPropAccess(state: BuildState, expr: PropAccessExpr): string {
     throw { message: "Forbidden property access.", pos: expr.right.pos };
   }
 
-  return `${left}${optionalChain}.${propName}`;
+  return `${left}${optionalChain || "."}${propName}`;
 }
 
 function buildCall(state: BuildState, expr: CallExpr): string {
@@ -85,7 +82,8 @@ function buildForLoop(state: BuildState, expr: ForExpr): string {
   const iterableValue = build(iterable, state.context);
 
   if (loopOperator === "of") {
-    return `for(let i=0;i<${iterableValue}.length;i++){const ${variable}=${iterableValue}[i];namespaces.Mutor.iter.index=i;`;
+    // Track the loop index for OF loops
+    return `prevLoopIndex=namespaces.Mutor.iter.index;for(let i=0;i<${iterableValue}.length;i++){const ${variable}=${iterableValue}[i];namespaces.Mutor.iter.index=i;`;
   }
 
   return `for(const ${variable} in ${iterableValue}){`;
@@ -114,7 +112,7 @@ function buildExpr(state: BuildState, expr: Expr): string {
       return "}";
 
     case ExprType.STRING:
-      return `\`${/\$\\/.test(expr.value) ? escapeRawText(expr.value) : expr.value}\``;
+      return `\`${/[$`\\]/.test(expr.value) ? escapeRawText(expr.value) : expr.value}\``;
 
     case ExprType.IDENT:
       return prefixWithCtx(state, expr);

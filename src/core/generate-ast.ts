@@ -207,7 +207,8 @@ function parsePropertyAccess(state: ParseState): Expr {
     if (token?.type === TokenType.OPERATOR && token?.value === "(") {
       state.cursor++;
 
-      if (!state.generatingNamespace && !state.config.allowFnCalls) {
+      // Only allow function calls for namespaces by default
+      if (!state.config.allowFnCalls && left.type !== ExprType.NAMESPACE) {
         throw {
           message: "Function calls are not allowed.",
           pos: token.pos,
@@ -229,14 +230,16 @@ function parsePropertyAccess(state: ParseState): Expr {
       state.tokens[state.cursor + 1]?.type === TokenType.OPERATOR &&
       state.tokens[state.cursor + 1]?.value === "("
     ) {
-      state.cursor += 2;
-
-      if (!state.generatingNamespace && !state.config.allowFnCalls) {
+      // Only allow function calls for namespaces by default
+      if (!state.config.allowFnCalls && left.type !== ExprType.NAMESPACE) {
         throw {
           message: "Function calls are not allowed.",
-          pos: token.pos,
+          pos: state.tokens[state.cursor + 1].pos,
         };
       }
+
+      // Move cursor to the postion of the first argument
+      state.cursor += 2;
 
       const args = extractFnArgs(state);
       expectOrThrow(state, TokenType.OPERATOR, ")");
@@ -272,7 +275,6 @@ function parsePropertyAccess(state: ParseState): Expr {
       }
 
       if (isNamespace) {
-        state.generatingNamespace = true;
         const right = parsePrimaryExpr(state);
 
         left = {
@@ -333,7 +335,6 @@ function parsePropertyAccess(state: ParseState): Expr {
     }
   }
 
-  state.generatingNamespace = false;
   return left;
 }
 
@@ -497,7 +498,6 @@ export default function generateAst(
     cursor: 0,
     tokens,
     config,
-    generatingNamespace: false,
   };
 
   const ast = parseTernaryExpr(state);

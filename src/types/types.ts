@@ -228,7 +228,6 @@ export interface ParseState {
   cursor: number;
   tokens: Token[];
   config: { allowFnCalls: boolean };
-  generatingNamespace: boolean;
 }
 
 export interface BuildState {

@@ -6,7 +6,7 @@ import {
   readFile,
   writeFile,
 } from "node:fs/promises";
-import { extname, join } from "node:path";
+import { extname, join, resolve } from "node:path";
 import type { PartialMutorConfig, RuntimeFrame } from "../types/types";
 import createRuntimeFrame from "../utils/create-runtime";
 import escapeFn from "../utils/escape-fn";
@@ -20,15 +20,21 @@ export default class MutorServer extends MutorBase {
     super(config);
   }
 
-  private __resolvePath(path: string, renderedPath: string) {
+  private __resolvePath(path: string, renderedPath?: string) {
     const isAlias = path.startsWith("@/");
     const root = this.__config.rootDir
       ? toAbsolutePath(this.__config.rootDir)
       : process.cwd();
 
-    const resolvedPath = isAlias
-      ? join(root, path.replace(/^@\//, "./"))
-      : toAbsolutePath(renderedPath, path);
+    let resolvedPath: string;
+
+    if (isAlias) {
+      resolvedPath = join(root, path.replace(/^@\//, "./"));
+    } else if (renderedPath) {
+      resolvedPath = toAbsolutePath(renderedPath, path);
+    } else {
+      resolvedPath = resolve(process.cwd(), path);
+    }
 
     return resolvedPath;
   }
@@ -54,7 +60,7 @@ export default class MutorServer extends MutorBase {
           runtime,
         );
       } catch (err) {
-        return this.handleError(err, previousPath, path, resolvedPath);
+        return this.__handleError(err, previousPath, path, resolvedPath);
       } finally {
         runtime.includeStack.delete(resolvedPath);
         runtime.renderedPath = previousPath;
@@ -77,7 +83,7 @@ export default class MutorServer extends MutorBase {
   private __renderFile(path: string, context: any, runtime: RuntimeFrame) {
     this.__setupIncludeForRuntime(runtime);
 
-    const absolutePath = this.__resolvePath(path, "");
+    const absolutePath = this.__resolvePath(path);
     let compiled: Function;
 
     // Save previous state for nested renders
@@ -108,7 +114,7 @@ export default class MutorServer extends MutorBase {
           const templateSize = template.length * 2 + 500;
 
           if (this.__cacheSize + templateSize > this.__config.cache.maxSize) {
-            if (this.createEntrySpaceForTemplate(templateSize)) {
+            if (this.__createEntrySpaceForTemplate(templateSize)) {
               this.__compiledTemplatesMap.set(absolutePath, {
                 fn: compiled,
                 size: templateSize,
@@ -204,7 +210,7 @@ export default class MutorServer extends MutorBase {
 
         if (this.__config.build.include.has(extension)) {
           const template = await readFile(absoluteSrcPath, "utf-8");
-          this.register(absoluteSrcPath, template);
+          this.__register(absoluteSrcPath, template);
         }
       }),
     );

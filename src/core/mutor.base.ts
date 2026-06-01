@@ -58,7 +58,7 @@ export default class MutorBase {
       },
       rootDir,
       autoEscape: autoEscape === true ? true : autoEscape !== false,
-      allowedProps: allowedProps || defaultConfig.allowedProps,
+      allowedProps: new Set([...(allowedProps || defaultConfig.allowedProps)]),
       allowFnCalls: !!allowFnCalls,
       onIncludeFail: onIncludeFail || defaultConfig.onIncludeFail,
       onIncludeError: onIncludeError || defaultConfig.onIncludeError,
@@ -128,7 +128,7 @@ export default class MutorBase {
     };
   }
 
-  protected handleError(
+  protected __handleError(
     err: unknown,
     from: string,
     path: string,
@@ -155,8 +155,8 @@ export default class MutorBase {
     return this.__config.onIncludeError?.(meta, err) ?? "";
   }
 
-  protected createEntrySpaceForTemplate(targetSize: number): boolean {
-    if (this.__cacheSize + targetSize < this.__config.cache.maxSize) {
+  protected __createEntrySpaceForTemplate(targetSize: number): boolean {
+    if (this.__cacheSize + targetSize <= this.__config.cache.maxSize) {
       return true;
     }
 
@@ -172,7 +172,7 @@ export default class MutorBase {
       this.__cacheSize -= oldestData.size;
     }
 
-    return this.createEntrySpaceForTemplate(targetSize);
+    return this.__createEntrySpaceForTemplate(targetSize);
   }
 
   getDiagnostics() {
@@ -195,23 +195,32 @@ export default class MutorBase {
     };
   }
 
-  protected register(identifier: string, template: string) {
+  protected __register(identifier: string, template: string) {
     const templateSize = template.length * 2 + 500;
+    const existingSize = this.__compiledTemplatesMap.get(identifier)?.size ?? 0;
 
-    if (this.__cacheSize + templateSize > this.__config.cache.maxSize) {
-      if (!this.createEntrySpaceForTemplate(templateSize)) {
-        throw new MutorError(
-          `The template for the component '${identifier}' is too large and will not fit in the cache. Consider increasing 'cache.maxSize' in the config`,
-        );
-      }
+    if (
+      this.__cacheSize - existingSize + templateSize >
+      this.__config.cache.maxSize
+    ) {
+      throw new MutorError(
+        `The template for the component '${identifier}' is too large and will not fit in the cache. Consider increasing 'cache.maxSize' in the config`,
+      );
     }
 
     // Use a temporary runtime for compilation context
     const tempRuntime = createRuntimeFrame(null, identifier);
+    // Compile first to expose errors before updating state
+    const compiled = this.compile(template, tempRuntime);
 
+    // Delete existing entry if it exists
+    this.__compiledTemplatesMap.delete(identifier);
+    this.__cacheSize -= existingSize;
+
+    // Add new entry
     this.__cacheSize += template.length * 2 + 500;
     this.__compiledTemplatesMap.set(identifier, {
-      fn: this.compile(template, tempRuntime),
+      fn: compiled,
       size: templateSize,
     });
   }
