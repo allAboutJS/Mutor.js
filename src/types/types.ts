@@ -1,4 +1,4 @@
-import type { ExprType, LoopType, TokenType } from "./enums";
+import type { BlockType, ExprType, LoopType, TokenType } from "./enums";
 
 export type BaseToken = {
   type: TokenType;
@@ -29,6 +29,7 @@ export type ForExpr = {
   pos: number;
   type: ExprType.FOR;
   variable: string;
+  secondaryVariable?: string;
   iterable: Expr;
   loopType: LoopType;
 };
@@ -48,6 +49,33 @@ export type ElseIfExpr = {
   pos: number;
   type: ExprType.ELSE_IF;
   condition: Expr;
+};
+
+export type SwitchExpr = {
+  pos: number;
+  type: ExprType.SWITCH;
+  condition: Expr;
+};
+
+export type CaseExpr = {
+  pos: number;
+  type: ExprType.CASE;
+  condition: Expr;
+};
+
+export type DefaultExpr = {
+  pos: number;
+  type: ExprType.DEFAULT;
+};
+
+export type BreakExpr = {
+  pos: number;
+  type: ExprType.BREAK;
+};
+
+export type ContinueExpr = {
+  pos: number;
+  type: ExprType.CONTINUE;
 };
 
 export type BooleanExpr = {
@@ -143,6 +171,11 @@ export type Expr =
   | IfExpr
   | ElseIfExpr
   | ElseExpr
+  | SwitchExpr
+  | CaseExpr
+  | DefaultExpr
+  | BreakExpr
+  | ContinueExpr
   | EndExpr
   | BooleanExpr
   | NullExpr
@@ -235,4 +268,14 @@ export interface BuildState {
   forbiddenProps: Set<string>;
   allowedProps: Set<string>;
   context: BuildContext;
+}
+
+export interface BlockState {
+  type: BlockType;
+  pos: number;
+  loopType: LoopType | undefined;
+  scopeSize: number;
+  hasCase: boolean;
+  hasDefault: boolean;
+  hasElse: boolean;
 }

@@ -33,10 +33,18 @@ export default function parse(
       trimmed.startsWith("for ") ||
       trimmed.startsWith("if ") ||
       trimmed === "else" ||
-      trimmed.startsWith("else if "),
+      trimmed.startsWith("else if ") ||
+      trimmed.startsWith("switch ") ||
+      trimmed.startsWith("case ") ||
+      trimmed === "default" ||
+      trimmed === "break" ||
+      trimmed === "continue",
     isBlockEnd: trimmed === "end",
     hasContext: trimmed.startsWith("for "),
-    requiresBlockClose: trimmed.startsWith("for ") || trimmed.startsWith("if "),
+    requiresBlockClose:
+      trimmed.startsWith("for ") ||
+      trimmed.startsWith("if ") ||
+      trimmed.startsWith("switch "),
     usesAwait: inner.includes("Mutor::await"),
   };
 }

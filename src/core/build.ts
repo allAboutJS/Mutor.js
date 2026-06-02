@@ -3,6 +3,7 @@ import type {
   BuildContext,
   BuildState,
   CallExpr,
+  CaseExpr,
   ElseIfExpr,
   Expr,
   ForExpr,
@@ -10,6 +11,7 @@ import type {
   IfExpr,
   NamespaceExpr,
   PropAccessExpr,
+  SwitchExpr,
 } from "../types/types";
 import escapeRawText from "../utils/escape-raw-text";
 import { MutorError } from "./error";
@@ -27,9 +29,19 @@ function prefixWithCtx(state: BuildState, expr: IdentExpr): string {
   return state.scope.includes(expr.value) ? expr.value : `ctx.${expr.value}`;
 }
 
-function buildNamespace(expr: NamespaceExpr): string {
+function buildNamespace(state: BuildState, expr: NamespaceExpr): string {
   const leftValue = (expr.left as IdentExpr).value;
   const rightValue = (expr.right as IdentExpr).value;
+
+  if (
+    (state.forbiddenProps.has(leftValue) &&
+      !state.allowedProps.has(leftValue)) ||
+    (state.forbiddenProps.has(rightValue) &&
+      !state.allowedProps.has(rightValue))
+  ) {
+    throw { message: "Forbidden namespace access.", pos: expr.pos };
+  }
+
   return `namespaces.${leftValue}.${rightValue}`;
 }
 
@@ -77,16 +89,17 @@ function buildCall(state: BuildState, expr: CallExpr): string {
 }
 
 function buildForLoop(state: BuildState, expr: ForExpr): string {
-  const { iterable, loopType, variable } = expr;
+  const { iterable, loopType, variable, secondaryVariable } = expr;
   const loopOperator = loopType === LoopType.IN ? "in" : "of";
   const iterableValue = build(iterable, state.context);
 
   if (loopOperator === "of") {
-    // Track the loop index for OF loops
-    return `prevLoopIndex=namespaces.Mutor.iter.index;for(let i=0;i<${iterableValue}.length;i++){const ${variable}=${iterableValue}[i];namespaces.Mutor.iter.index=i;`;
+    return `for(let $__i=0,$__iterable=${iterableValue};$__i<$__iterable.length;$__i++){const ${variable}=$__iterable[$__i];${secondaryVariable ? `const ${secondaryVariable}=$__i;` : ""}`;
   }
 
-  return `for(const ${variable} in ${iterableValue}){`;
+  return secondaryVariable
+    ? `for(const [${variable}, ${secondaryVariable}] of Object.entries(${iterableValue})){`
+    : `for(const ${variable} in ${iterableValue}){`;
 }
 
 function buildIfBlock(state: BuildState, expr: IfExpr): string {
@@ -97,6 +110,14 @@ function buildIfBlock(state: BuildState, expr: IfExpr): string {
 function buildElseIfBlock(state: BuildState, expr: ElseIfExpr): string {
   const { condition } = expr;
   return `}else if(${build(condition, state.context)}){`;
+}
+
+function buildSwitchBlock(state: BuildState, expr: SwitchExpr): string {
+  return `switch(${build(expr.condition, state.context)}){`;
+}
+
+function buildCaseBlock(state: BuildState, expr: CaseExpr): string {
+  return `case ${build(expr.condition, state.context)}:`;
 }
 
 function buildExpr(state: BuildState, expr: Expr): string {
@@ -142,7 +163,7 @@ function buildExpr(state: BuildState, expr: Expr): string {
       return buildCall(state, expr as CallExpr);
 
     case ExprType.NAMESPACE:
-      return buildNamespace(expr as NamespaceExpr);
+      return buildNamespace(state, expr as NamespaceExpr);
 
     case ExprType.FOR:
       return buildForLoop(state, expr as ForExpr);
@@ -155,6 +176,21 @@ function buildExpr(state: BuildState, expr: Expr): string {
 
     case ExprType.ELSE_IF:
       return buildElseIfBlock(state, expr as ElseIfExpr);
+
+    case ExprType.SWITCH:
+      return buildSwitchBlock(state, expr as SwitchExpr);
+
+    case ExprType.CASE:
+      return buildCaseBlock(state, expr as CaseExpr);
+
+    case ExprType.DEFAULT:
+      return "default:";
+
+    case ExprType.BREAK:
+      return "break;";
+
+    case ExprType.CONTINUE:
+      return "continue;";
 
     default:
       throw new MutorError(`Unsupported expression type '${type}'`);

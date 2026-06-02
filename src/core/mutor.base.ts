@@ -17,20 +17,15 @@ export default class MutorBase {
     string,
     { fn: Function; size: number }
   > = new Map();
-  protected __namespaces: Record<any, any> = {
-    ...namespaces,
-    Mutor: {
-      await: async (value: any) => {
-        return await value;
-      },
-      iter: {
-        index: null,
-      },
-    },
-  };
+  protected __namespaces: Record<any, any> = namespaces;
 
   constructor(config: PartialMutorConfig = {}) {
     this.addConfig(config);
+    this.__namespaces.Mutor = {
+      await: async (value: any) => {
+        return await value;
+      },
+    };
   }
 
   addConfig(conf: PartialMutorConfig): MutorConfig {
@@ -81,10 +76,24 @@ export default class MutorBase {
     this.__config = { ...defaultConfig };
   }
 
-  compile(template: string, runtime?: RuntimeFrame): Function {
+  protected __compile(template: string, runtime?: RuntimeFrame) {
     return compile(template, this.__config, {
       path: runtime?.renderedPath || "anonymous",
     });
+  }
+
+  compile(template: string) {
+    const fn = this.__compile(template);
+
+    return (context: any) =>
+      fn(
+        context,
+        this.__createNamespacesWithRuntime(createRuntimeFrame(context)),
+        this.__config.allowedProps,
+        this.__config.forbiddenProps,
+        escapeFn,
+        validateComputedProp,
+      );
   }
 
   renderAsync(template: string, context: any): Promise<string> {
@@ -102,7 +111,7 @@ export default class MutorBase {
     template: string,
     runtime: RuntimeFrame,
   ): string {
-    const fn = this.compile(template, runtime);
+    const fn = this.__compile(template, runtime);
 
     const result = fn(
       runtime.context,
@@ -211,7 +220,7 @@ export default class MutorBase {
     // Use a temporary runtime for compilation context
     const tempRuntime = createRuntimeFrame(null, identifier);
     // Compile first to expose errors before updating state
-    const compiled = this.compile(template, tempRuntime);
+    const compiled = this.__compile(template, tempRuntime);
 
     // Delete existing entry if it exists
     this.__compiledTemplatesMap.delete(identifier);

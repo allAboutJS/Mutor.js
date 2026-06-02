@@ -24,6 +24,11 @@ export enum ExprType {
   IF,
   ELSE_IF,
   ELSE,
+  SWITCH,
+  CASE,
+  DEFAULT,
+  BREAK,
+  CONTINUE,
   END,
 }
 
@@ -34,5 +39,6 @@ export enum LoopType {
 
 export enum BlockType {
   LOOP,
-  NON_LOOP,
+  SWITCH,
+  IF,
 }

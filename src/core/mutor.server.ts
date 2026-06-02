@@ -108,7 +108,7 @@ export default class MutorServer extends MutorBase {
         this.__compiledTemplatesMap.set(absolutePath, entry);
       } else {
         const template = readFileSync(absolutePath, "utf-8");
-        compiled = this.compile(template, runtime);
+        compiled = this.__compile(template, runtime);
 
         if (this.__config.cache.active) {
           const templateSize = template.length * 2 + 500;

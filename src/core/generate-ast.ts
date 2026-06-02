@@ -4,8 +4,10 @@ import type {
   ElseIfExpr,
   Expr,
   ForExpr,
+  IdentExpr,
   IfExpr,
   ParseState,
+  SwitchExpr,
   Token,
 } from "../types/types";
 import { getTokenTypeWords } from "../utils/get-token-type-words";
@@ -67,7 +69,16 @@ function expectOrThrow(
 function parseForLoop(state: ParseState): ForExpr {
   const pos = state.tokens[state.cursor - 1].pos;
   const variable = expectOrThrow(state, TokenType.IDENT).value;
+  let secondaryVariable: string | undefined;
   let token: Token;
+
+  if (
+    state.tokens[state.cursor]?.type === TokenType.OPERATOR &&
+    state.tokens[state.cursor]?.value === ","
+  ) {
+    state.cursor++;
+    secondaryVariable = expectOrThrow(state, TokenType.IDENT).value;
+  }
 
   try {
     token = expectOrThrow(state, TokenType.KEYWORD, "in");
@@ -78,12 +89,24 @@ function parseForLoop(state: ParseState): ForExpr {
   const loopType = token.value === "in" ? LoopType.IN : LoopType.OF;
   const iterable = parseTernaryExpr(state);
 
-  return { type: ExprType.FOR, loopType, iterable, variable, pos };
+  return {
+    type: ExprType.FOR,
+    loopType,
+    iterable,
+    variable,
+    secondaryVariable,
+    pos,
+  };
 }
 
 function parseIfExpression(state: ParseState): IfExpr {
   const condition = parseTernaryExpr(state);
   return { condition, pos: condition.pos, type: ExprType.IF };
+}
+
+function parseSwitchExpression(state: ParseState): SwitchExpr {
+  const condition = parseTernaryExpr(state);
+  return { condition, pos: condition.pos, type: ExprType.SWITCH };
 }
 
 function parseElseExpression(state: ParseState): ElseExpr | ElseIfExpr {
@@ -167,6 +190,27 @@ function parsePrimaryExpr(state: ParseState): Expr {
       return parseIfExpression(state);
     }
 
+    if (token.value === "switch" && state.cursor === 1) {
+      return parseSwitchExpression(state);
+    }
+
+    if (token.value === "case" && state.cursor === 1) {
+      const condition = parseTernaryExpr(state);
+      return { type: ExprType.CASE, condition, pos: condition.pos };
+    }
+
+    if (token.value === "default" && state.tokens.length === 1) {
+      return { type: ExprType.DEFAULT, pos: token.pos };
+    }
+
+    if (token.value === "break" && state.tokens.length === 1) {
+      return { type: ExprType.BREAK, pos: token.pos };
+    }
+
+    if (token.value === "continue" && state.tokens.length === 1) {
+      return { type: ExprType.CONTINUE, pos: token.pos };
+    }
+
     if (token.value === "else" && state.cursor === 1) {
       return parseElseExpression(state);
     }
@@ -196,6 +240,22 @@ function parsePrimaryExpr(state: ParseState): Expr {
     message: `Unexpected token '${token.value}'.`,
     pos: token.pos,
   };
+}
+
+function parsePropertyIdentifier(state: ParseState): IdentExpr {
+  const token = state.tokens[state.cursor++];
+
+  if (
+    !token ||
+    (token.type !== TokenType.IDENT && token.type !== TokenType.KEYWORD)
+  ) {
+    throw {
+      message: "Expected an identifier after property access.",
+      pos: token?.pos ?? state.tokens[state.cursor - 2].pos,
+    };
+  }
+
+  return { type: ExprType.IDENT, value: token.value, pos: token.pos };
 }
 
 function parsePropertyAccess(state: ParseState): Expr {
@@ -312,7 +372,7 @@ function parsePropertyAccess(state: ParseState): Expr {
             pos: state.tokens[state.cursor - 1].pos,
           };
         } else {
-          const right = parsePrimaryExpr(state);
+          const right = parsePropertyIdentifier(state);
           left = {
             type: ExprType.PROP_ACCESS,
             left,
@@ -322,7 +382,7 @@ function parsePropertyAccess(state: ParseState): Expr {
           };
         }
       } else {
-        const right = parsePrimaryExpr(state);
+        const right = parsePropertyIdentifier(state);
         left = {
           type: ExprType.PROP_ACCESS,
           left,

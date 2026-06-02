@@ -13,6 +13,16 @@ describe("Security Boundaries", () => {
     expect(() => engine.render('{{ this["__proto__"] }}', context)).toThrow();
   });
 
+  test("prevents inherited namespace access", () => {
+    expect(() =>
+      engine.render(
+        '{{ Math::__defineGetter__("owned", constructor::constructor("return process.exit()")) }}',
+        {},
+      ),
+    ).toThrow();
+    expect(() => engine.render("{{ constructor::constructor }}", {})).toThrow();
+  });
+
   test("isolates global scope", () => {
     // process, window, global, globalThis should not be accessible
     const context = {};

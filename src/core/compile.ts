@@ -1,5 +1,10 @@
-import { BlockType, type LoopType } from "../types/enums";
-import type { CompileMetadata, ForExpr, MutorConfig } from "../types/types";
+import { BlockType, ExprType } from "../types/enums";
+import type {
+  BlockState,
+  CompileMetadata,
+  ForExpr,
+  MutorConfig,
+} from "../types/types";
 import escapeRawText from "../utils/escape-raw-text";
 import getLineNumberAndIndex from "../utils/get-line-and-column-nums";
 import getLineSnapshot from "../utils/get-line-snapshot";
@@ -16,11 +21,9 @@ export default function compile(
   meta: CompileMetadata,
 ) {
   const scope: string[] = [];
-  const blockOpeningStack: {
-    type: BlockType;
-    pos: number;
-    loopType: LoopType | undefined;
-  }[] = [];
+  // Keep track of block opening states to support nested blocks
+  const blockOpeningStack: BlockState[] = [];
+
   const {
     delimiters,
     keepOpeningTagEscapeDelimiter,
@@ -36,7 +39,7 @@ export default function compile(
   // Whitespace control state
   let trimNext = false,
     cursor = 0,
-    body = `let acc="",prevLoopIndex=undefined;`;
+    body = `let acc="";`;
 
   while (cursor < src.length) {
     const templateOpenTagIdx = src.indexOf(delimiters.openingTag, cursor);
@@ -53,6 +56,7 @@ export default function compile(
     function isEscaped() {
       let j = templateOpenTagIdx,
         count = 0;
+
       while (
         j >= delimiters.openingTagEscape.length &&
         src.slice(j - delimiters.openingTagEscape.length, j) ===
@@ -61,6 +65,7 @@ export default function compile(
         count++;
         j -= delimiters.openingTagEscape.length;
       }
+
       return count % 2 === 1;
     }
 
@@ -122,7 +127,7 @@ export default function compile(
       usesAwait,
     } = parse(template, { delimiters });
 
-    // Switch to async mode is Mutor::await is used
+    // Switch to async mode if Mutor::await is used
     if (usesAwait && mode !== "async") {
       mode = "async";
     }
@@ -130,6 +135,32 @@ export default function compile(
     // Process Raw Text (between cursor and current tag)
     let rawText = src.slice(cursor, templateOpenTagIdx);
     if (rawText) {
+      const lastBlockOpened = blockOpeningStack[blockOpeningStack.length - 1];
+
+      if (
+        lastBlockOpened?.type === BlockType.SWITCH &&
+        !lastBlockOpened.hasCase
+      ) {
+        const firstNonWhitespace = rawText.search(/\S/);
+
+        // Prevent raw text from being processed if it doesn't start with a case or default tag
+        if (firstNonWhitespace === -1) {
+          rawText = "";
+        } else {
+          const pos = cursor + firstNonWhitespace;
+          const [line, lineIndex] = getLineNumberAndIndex(src, pos);
+          const lineText = getLineSnapshot(src, lineIndex);
+
+          throw new MutorCompilerError(
+            "A switch block must begin with a case or default tag.",
+            line,
+            lineText,
+            pos - lineIndex,
+            meta.path,
+          );
+        }
+      }
+
       if (trimNext) {
         rawText = rawText.trimStart();
       }
@@ -145,27 +176,127 @@ export default function compile(
 
     // Reset after use
     trimNext = false;
-
     cursor = templateEndTagIdx + delimiters.closingTag.length;
 
     try {
       if (!isComment) {
         const tokens = tokenize(inner);
         const ast = generateAst(tokens, { allowFnCalls });
+        const lastBlockOpened = blockOpeningStack[blockOpeningStack.length - 1];
+
+        if (
+          lastBlockOpened?.type === BlockType.SWITCH &&
+          !lastBlockOpened.hasCase &&
+          ast.type !== ExprType.CASE &&
+          ast.type !== ExprType.DEFAULT &&
+          ast.type !== ExprType.END
+        ) {
+          throw {
+            message: "A switch block must begin with a case or default tag.",
+            pos: ast.pos,
+          };
+        }
+
+        if (
+          (ast.type === ExprType.CASE || ast.type === ExprType.DEFAULT) &&
+          lastBlockOpened?.type !== BlockType.SWITCH
+        ) {
+          throw {
+            message: `'${ast.type === ExprType.CASE ? "case" : "default"}' can only be used directly inside a switch block.`,
+            pos: ast.pos,
+          };
+        }
+
+        if (ast.type === ExprType.DEFAULT) {
+          if (lastBlockOpened!.hasDefault) {
+            throw {
+              message: "A switch block can only have one default case.",
+              pos: ast.pos,
+            };
+          }
+
+          lastBlockOpened!.hasDefault = true;
+        }
+
+        if (ast.type === ExprType.CASE || ast.type === ExprType.DEFAULT) {
+          lastBlockOpened!.hasCase = true;
+        }
+
+        if (
+          (ast.type === ExprType.ELSE || ast.type === ExprType.ELSE_IF) &&
+          lastBlockOpened?.type !== BlockType.IF
+        ) {
+          throw {
+            message: `'${ast.type === ExprType.ELSE ? "else" : "else if"}' can only be used directly inside an if block.`,
+            pos: ast.pos,
+          };
+        }
+
+        if (
+          (ast.type === ExprType.ELSE || ast.type === ExprType.ELSE_IF) &&
+          lastBlockOpened!.hasElse
+        ) {
+          throw {
+            message: `'${ast.type === ExprType.ELSE ? "else" : "else if"}' cannot be used after an else block.`,
+            pos: ast.pos,
+          };
+        }
+
+        if (ast.type === ExprType.ELSE) {
+          lastBlockOpened!.hasElse = true;
+        }
+
+        if (
+          ast.type === ExprType.BREAK &&
+          !blockOpeningStack.some(
+            ({ type }) => type === BlockType.LOOP || type === BlockType.SWITCH,
+          )
+        ) {
+          throw {
+            message: "'break' can only be used inside a loop or switch block.",
+            pos: ast.pos,
+          };
+        }
+
+        if (
+          ast.type === ExprType.CONTINUE &&
+          !blockOpeningStack.some(({ type }) => type === BlockType.LOOP)
+        ) {
+          throw {
+            message: "'continue' can only be used inside a loop block.",
+            pos: ast.pos,
+          };
+        }
+
+        const js = build(ast, { allowedProps, forbiddenProps, scope });
 
         if (isBlock && requiresBlockClose && hasContext) {
-          scope.push((ast as ForExpr).variable);
+          const { variable, secondaryVariable } = ast as ForExpr;
+
+          scope.push(variable);
+          if (secondaryVariable) {
+            scope.push(secondaryVariable);
+          }
 
           blockOpeningStack.push({
             type: BlockType.LOOP,
             pos: templateOpenTagIdx,
             loopType: (ast as ForExpr).loopType,
+            scopeSize: secondaryVariable === undefined ? 1 : 2,
+            hasCase: false,
+            hasDefault: false,
+            hasElse: false,
           });
         } else if (isBlock && requiresBlockClose && !hasContext) {
           blockOpeningStack.push({
-            type: BlockType.NON_LOOP,
+            type:
+              ast.type === ExprType.SWITCH ? BlockType.SWITCH : BlockType.IF,
             pos: templateOpenTagIdx,
             loopType: undefined,
+            scopeSize: 0,
+            hasCase: false,
+            hasDefault: false,
+            hasElse: false,
           });
         }
 
@@ -179,16 +310,11 @@ export default function compile(
             };
           }
 
+          // Remove scope for the current block if it's a loop block
           if (lastBlockOpened?.type === BlockType.LOOP) {
-            scope.pop();
-            // Reset the index tracker to the parent loops index if available
-            // Will cause stale indexes outside of loops
-            body += "};namespaces.Mutor.iter.index=prevLoopIndex;";
-            continue;
+            scope.splice(-lastBlockOpened.scopeSize);
           }
         }
-
-        const js = build(ast, { allowedProps, forbiddenProps, scope });
 
         if (isBlock || isBlockEnd) {
           body += js;
@@ -204,7 +330,9 @@ export default function compile(
       }
 
       // Set state for the NEXT raw text chunk
-      if (rightTrim) trimNext = true;
+      if (rightTrim) {
+        trimNext = true;
+      }
     } catch (e) {
       const { message, pos: relPos } = e as { message: string; pos: number };
       const delimitersLength = leftTrim

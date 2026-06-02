@@ -12,6 +12,11 @@ export const keywords = new Set([
   "end",
   "in",
   "of",
+  "switch",
+  "case",
+  "default",
+  "break",
+  "continue",
 ]);
 
 export const operators = new Set([
@@ -87,7 +92,18 @@ export const defaultConfig: MutorConfig = {
   },
   autoEscape: true,
   allowedProps: new Set(),
-  forbiddenProps: new Set(["__proto__", "constructor", "prototype"]),
+  forbiddenProps: new Set([
+    "__proto__",
+    "constructor",
+    "prototype",
+    "__defineGetter__",
+    "__defineSetter__",
+    "__lookupGetter__",
+    "__lookupSetter__",
+    "caller",
+    "callee",
+    "arguments",
+  ]),
   allowFnCalls: false,
   delimiters: {
     closingTag: "}}",
@@ -107,64 +123,32 @@ export const defaultConfig: MutorConfig = {
 export const namespaces = {
   JSON: {
     stringify(value: any, space?: number) {
-      try {
-        return JSON.stringify(value, null, space);
-      } catch {
-        throw new MutorError("JSON::stringify failed");
-      }
+      return JSON.stringify(value, null, space);
     },
 
     parse(str: string) {
-      if (typeof str !== "string") {
-        throw new MutorError("JSON::parse expects a string");
-      }
-
-      try {
-        return JSON.parse(str);
-      } catch {
-        throw new MutorError("JSON::parse failed: invalid JSON string");
-      }
+      return JSON.parse(str);
     },
   },
 
   Object: {
     keys(obj: object) {
-      if (!obj || typeof obj !== "object") {
-        throw new MutorError("Object::keys expects an object");
-      }
-
       return Object.keys(obj);
     },
 
     values(obj: object) {
-      if (!obj || typeof obj !== "object") {
-        throw new MutorError("Object::values expects an object");
-      }
-
       return Object.values(obj);
     },
 
     entries(obj: object) {
-      if (!obj || typeof obj !== "object") {
-        throw new MutorError("Object::entries expects an object");
-      }
-
       return Object.entries(obj);
     },
 
     hasOwn(obj: object, key: any) {
-      if (!obj || typeof obj !== "object") {
-        throw new MutorError("Object::hasOwn expects an object");
-      }
-
       return Object.hasOwn(obj, key);
     },
 
-    fromEntries(entries: any[]) {
-      if (!Array.isArray(entries)) {
-        throw new MutorError("Object::fromEntries expects an array");
-      }
-
+    fromEntries(entries: Iterable<readonly [PropertyKey, any]>) {
       return Object.fromEntries(entries);
     },
 
@@ -308,10 +292,6 @@ export const namespaces = {
     },
 
     toFixed(value: number, digits = 0) {
-      if (typeof value !== "number") {
-        throw new MutorError("Number::toFixed expects a number");
-      }
-
       return value.toFixed(digits);
     },
 
@@ -392,10 +372,6 @@ export const namespaces = {
     },
 
     parse(str: string) {
-      if (typeof str !== "string") {
-        throw new MutorError("Date::parse expects a string");
-      }
-
       return Date.parse(str);
     },
 
@@ -409,8 +385,6 @@ export const namespaces = {
 
     iso(date?: string | number | Date) {
       const d = new Date(date ?? Date.now());
-      if (Number.isNaN(d.getTime()))
-        throw new MutorError("Invalid date provided to Date::iso");
       return d.toISOString();
     },
 
@@ -427,18 +401,10 @@ export const namespaces = {
 
   URL: {
     encode(value: string) {
-      if (typeof value !== "string") {
-        throw new MutorError("URL::encode expects a string");
-      }
-
       return encodeURIComponent(value);
     },
 
     decode(value: string) {
-      if (typeof value !== "string") {
-        throw new MutorError("URL::decode expects a string");
-      }
-
       return decodeURIComponent(value);
     },
   },

@@ -131,7 +131,7 @@ const njTemplate = `
   </ul>
 </div>`;
 
-tEngine.registerComponent("template", mutorTemplate);
+const mCompiled = tEngine.compile(mutorTemplate);
 
 const eta = new Eta({ autoEscape: false });
 nunjucks.configure({ autoescape: false });
@@ -169,7 +169,7 @@ new Benchmark.Suite("Compilation")
 
 new Benchmark.Suite("Execution")
   .add("Mutor.js Execute", () => {
-    tEngine.renderComponent("template", ctx);
+    mCompiled(ctx);
   })
   .add("Eta Execute", () => {
     etaRender.call(eta, ctx);
