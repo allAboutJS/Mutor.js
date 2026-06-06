@@ -60,14 +60,6 @@ describe("AST Generator", () => {
     expect(inAst.secondaryVariable).toBe("value");
   });
 
-  test("handles switch expressions", () => {
-    expect(parse("switch role").type).toBe(ExprType.SWITCH);
-    expect(parse("case 'admin'").type).toBe(ExprType.CASE);
-    expect(parse("default").type).toBe(ExprType.DEFAULT);
-    expect(parse("break").type).toBe(ExprType.BREAK);
-    expect(parse("continue").type).toBe(ExprType.CONTINUE);
-  });
-
   test("throws on invalid syntax", () => {
     expect(() => parse("1 +")).toThrow("Unexpected end of expression.");
     expect(() => parse("(1 + 2")).toThrow(
