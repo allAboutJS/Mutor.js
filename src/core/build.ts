@@ -12,7 +12,6 @@ import type {
   PropAccessExpr,
 } from "../types/types";
 import escapeRawText from "../utils/escape-raw-text";
-import { MutorError } from "./error";
 
 const BACKTICK_REGEX = /^`|`$/gm;
 
@@ -172,9 +171,6 @@ function buildExpr(state: BuildState, expr: Expr): string {
 
     case ExprType.CONTINUE:
       return "continue;";
-
-    default:
-      throw new MutorError(`Unsupported expression type '${type}'`);
   }
 }
 

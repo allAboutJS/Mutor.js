@@ -32,6 +32,7 @@ export default function compile(
     allowedProps,
     forbiddenProps,
     autoEscape,
+    debugRuntimeErrors,
   } = config;
 
   // Function mode (sync/async)
@@ -185,18 +186,35 @@ export default function compile(
         if (lastBlockOpened.type === BlockType.LOOP) {
           scope.splice(-lastBlockOpened.scopeSize);
         }
+
+        body += js;
+        continue;
       }
 
-      if (expressionMetadata.isBlock || expressionMetadata.isBlockEnd) {
+      if (expressionMetadata.isBlock) {
         body += js;
       } else {
         // Only escape unknown values returned from fn calls or object property resolution
         // Values returned from Mutor::include should be taken as is.
-        body +=
-          // Escape the return values of unknown values at runtime
-          autoEscape && !js.startsWith("namespaces.Mutor.include")
-            ? `acc+=escapeFn(${js});`
-            : `acc+=${js};`;
+
+        if (debugRuntimeErrors) {
+          const [line, lineIndex] = getLineNumberAndIndex(
+            src,
+            templateOpenTagIdx,
+          );
+          const lineText = getLineSnapshot(src, lineIndex);
+          body +=
+            // Escape the return values of unknown values at runtime
+            autoEscape && !js.startsWith("namespaces.Mutor.include")
+              ? `try{acc+=escapeFn(${js});}catch(e){throw new MutorRuntimeError(e??"An unknown error ocurred.",${line},\`${escapeRawText(lineText)}\`,${templateOpenTagIdx},\`${escapeRawText(meta.path)}\`);}`
+              : `try{acc+=${js};}catch(e){throw new MutorRuntimeError(e??"An unknown error ocurred.",${line},\`${escapeRawText(lineText)}\`,${templateOpenTagIdx},\`${escapeRawText(meta.path)}\`);}`;
+        } else {
+          body +=
+            // Escape the return values of unknown values at runtime
+            autoEscape && !js.startsWith("namespaces.Mutor.include")
+              ? `acc+=escapeFn(${js});`
+              : `acc+=${js};`;
+        }
       }
     } catch (e) {
       const { message, pos: relPos } = e as { message: string; pos: number };
@@ -240,6 +258,7 @@ export default function compile(
         "forbiddenProps",
         "escapeFn",
         "validateComputedProps",
+        "MutorRuntimeError",
         body,
       )
     : new Function(
@@ -249,6 +268,7 @@ export default function compile(
         "forbiddenProps",
         "escapeFn",
         "validateComputedProps",
+        "MutorRuntimeError",
         body,
       );
 }
