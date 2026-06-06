@@ -34,7 +34,7 @@ export default class MutorBase {
       delimiters: overrideDelimeters,
       allowedProps,
       forbiddenProps,
-      keepOpeningTagEscapeDelimiter,
+      preserveEscapeDelimiter,
       allowFnCalls,
       cache,
       build,
@@ -63,7 +63,7 @@ export default class MutorBase {
         ...defaultConfig.forbiddenProps,
         ...(forbiddenProps || []),
       ]),
-      keepOpeningTagEscapeDelimiter: keepOpeningTagEscapeDelimiter ?? false,
+      preserveEscapeDelimiter: preserveEscapeDelimiter ?? false,
       debugRuntimeErrors: debugRuntimeErrors ?? false,
       delimiters: {
         ...defaultConfig.delimiters,

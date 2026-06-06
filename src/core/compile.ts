@@ -27,7 +27,7 @@ export default function compile(
   const blockOpeningStack: BlockState[] = [];
   const {
     delimiters,
-    keepOpeningTagEscapeDelimiter,
+    preserveEscapeDelimiter,
     allowFnCalls,
     allowedProps,
     forbiddenProps,
@@ -65,7 +65,7 @@ export default function compile(
     if (escaped) {
       const text = src.slice(
         cursor,
-        keepOpeningTagEscapeDelimiter
+        preserveEscapeDelimiter
           ? templateOpenTagIdx
           : templateOpenTagIdx - delimiters.openingTagEscape.length,
       );

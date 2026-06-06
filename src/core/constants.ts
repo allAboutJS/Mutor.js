@@ -110,7 +110,7 @@ export const defaultConfig: MutorConfig = {
     whitespaceTrim: "~",
     commentTag: "#",
   },
-  keepOpeningTagEscapeDelimiter: false,
+  preserveEscapeDelimiter: false,
   onIncludeFail: "throw",
   cache: {
     active: true,

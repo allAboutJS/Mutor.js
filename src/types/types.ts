@@ -177,7 +177,7 @@ export interface MutorConfig {
     maxSize: number;
   };
   rootDir?: string;
-  keepOpeningTagEscapeDelimiter: boolean;
+  preserveEscapeDelimiter: boolean;
   allowedProps: Set<string>;
   forbiddenProps: Set<string>;
   allowFnCalls: boolean;
