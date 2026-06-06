@@ -7,7 +7,6 @@ import type {
   IdentExpr,
   IfExpr,
   ParseState,
-  SwitchExpr,
   Token,
 } from "../types/types";
 import { getTokenTypeWords } from "../utils/get-token-type-words";
@@ -104,11 +103,6 @@ function parseIfExpression(state: ParseState): IfExpr {
   return { condition, pos: condition.pos, type: ExprType.IF };
 }
 
-function parseSwitchExpression(state: ParseState): SwitchExpr {
-  const condition = parseTernaryExpr(state);
-  return { condition, pos: condition.pos, type: ExprType.SWITCH };
-}
-
 function parseElseExpression(state: ParseState): ElseExpr | ElseIfExpr {
   const pos = state.tokens[state.cursor - 1].pos;
 
@@ -182,25 +176,15 @@ function parsePrimaryExpr(state: ParseState): Expr {
       return { type: ExprType.NULL, pos: token.pos };
     }
 
-    if (token.value === "end" && state.tokens.length === 1) {
+    if (
+      (token.value === "endif" || token.value === "endfor") &&
+      state.tokens.length === 1
+    ) {
       return { type: ExprType.END, pos: token.pos };
     }
 
     if (token.value === "if" && state.cursor === 1) {
       return parseIfExpression(state);
-    }
-
-    if (token.value === "switch" && state.cursor === 1) {
-      return parseSwitchExpression(state);
-    }
-
-    if (token.value === "case" && state.cursor === 1) {
-      const condition = parseTernaryExpr(state);
-      return { type: ExprType.CASE, condition, pos: condition.pos };
-    }
-
-    if (token.value === "default" && state.tokens.length === 1) {
-      return { type: ExprType.DEFAULT, pos: token.pos };
     }
 
     if (token.value === "break" && state.tokens.length === 1) {
