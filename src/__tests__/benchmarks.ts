@@ -31,7 +31,7 @@ const mutorTemplate = `
   <h1>{{ title }}</h1>
   {{ if user.premium }}
     <p>Welcome, {{ user.name }} (Role: {{ user.roles[0] }})</p>
-  {{ end }}
+  {{ endif }}
   <ul>
     {{ for item of items }}
       <li>
@@ -39,11 +39,11 @@ const mutorTemplate = `
         {{ if item.meta.available }}
           <span>[{{ item.meta.category }}]</span>
           <small>
-            {{ for tag of item.tags }} #{{ tag }}{{ end }}
+            {{ for tag of item.tags }} #{{ tag }}{{ endfor }}
           </small>
-        {{ end }}
+        {{ endif }}
       </li>
-    {{ end }}
+    {{ endfor }}
   </ul>
 </div>`;
 
