@@ -51,17 +51,6 @@ export type ElseIfExpr = {
   condition: Expr;
 };
 
-export type CaseExpr = {
-  pos: number;
-  type: ExprType.CASE;
-  condition: Expr;
-};
-
-export type DefaultExpr = {
-  pos: number;
-  type: ExprType.DEFAULT;
-};
-
 export type BreakExpr = {
   pos: number;
   type: ExprType.BREAK;
@@ -165,8 +154,6 @@ export type Expr =
   | IfExpr
   | ElseIfExpr
   | ElseExpr
-  | CaseExpr
-  | DefaultExpr
   | BreakExpr
   | ContinueExpr
   | EndExpr
@@ -211,6 +198,7 @@ export interface MutorConfig {
     openingTagEscape: string;
     commentTag: string;
   };
+  debugRuntimeErrors: boolean;
 }
 
 export type PartialMutorConfig = Partial<Omit<MutorConfig, "delimiters">> & {
