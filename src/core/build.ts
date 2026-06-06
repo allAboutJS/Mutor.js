@@ -3,7 +3,6 @@ import type {
   BuildContext,
   BuildState,
   CallExpr,
-  CaseExpr,
   ElseIfExpr,
   Expr,
   ForExpr,
@@ -11,7 +10,6 @@ import type {
   IfExpr,
   NamespaceExpr,
   PropAccessExpr,
-  SwitchExpr,
 } from "../types/types";
 import escapeRawText from "../utils/escape-raw-text";
 import { MutorError } from "./error";
@@ -112,14 +110,6 @@ function buildElseIfBlock(state: BuildState, expr: ElseIfExpr): string {
   return `}else if(${build(condition, state.context)}){`;
 }
 
-function buildSwitchBlock(state: BuildState, expr: SwitchExpr): string {
-  return `switch(${build(expr.condition, state.context)}){`;
-}
-
-function buildCaseBlock(state: BuildState, expr: CaseExpr): string {
-  return `case ${build(expr.condition, state.context)}:`;
-}
-
 function buildExpr(state: BuildState, expr: Expr): string {
   const { type } = expr;
 
@@ -176,15 +166,6 @@ function buildExpr(state: BuildState, expr: Expr): string {
 
     case ExprType.ELSE_IF:
       return buildElseIfBlock(state, expr as ElseIfExpr);
-
-    case ExprType.SWITCH:
-      return buildSwitchBlock(state, expr as SwitchExpr);
-
-    case ExprType.CASE:
-      return buildCaseBlock(state, expr as CaseExpr);
-
-    case ExprType.DEFAULT:
-      return "default:";
 
     case ExprType.BREAK:
       return "break;";
