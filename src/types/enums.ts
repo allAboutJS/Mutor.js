@@ -39,6 +39,5 @@ export enum LoopType {
 
 export enum BlockType {
   LOOP,
-  SWITCH,
   IF,
 }

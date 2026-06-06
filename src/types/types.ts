@@ -51,12 +51,6 @@ export type ElseIfExpr = {
   condition: Expr;
 };
 
-export type SwitchExpr = {
-  pos: number;
-  type: ExprType.SWITCH;
-  condition: Expr;
-};
-
 export type CaseExpr = {
   pos: number;
   type: ExprType.CASE;
@@ -171,7 +165,6 @@ export type Expr =
   | IfExpr
   | ElseIfExpr
   | ElseExpr
-  | SwitchExpr
   | CaseExpr
   | DefaultExpr
   | BreakExpr
@@ -270,12 +263,22 @@ export interface BuildState {
   context: BuildContext;
 }
 
-export interface BlockState {
-  type: BlockType;
-  pos: number;
-  loopType: LoopType | undefined;
-  scopeSize: number;
-  hasCase: boolean;
-  hasDefault: boolean;
-  hasElse: boolean;
+export type BlockState =
+  | {
+      type: BlockType.LOOP;
+      pos: number;
+      loopType: LoopType;
+      scopeSize: number;
+    }
+  | {
+      type: BlockType.IF;
+      pos: number;
+    };
+
+export interface ExpressionMetadata {
+  isBlock: boolean;
+  isBlockEnd: boolean;
+  hasContext: boolean;
+  requiresBlockClose: boolean;
+  usesAwait: boolean;
 }
