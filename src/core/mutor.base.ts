@@ -8,7 +8,7 @@ import escapeFn from "../utils/escape-fn";
 import validateComputedProp from "../utils/validate-computed-prop";
 import compile from "./compile";
 import { defaultConfig, namespaces } from "./constants";
-import { MutorCompilerError, MutorError } from "./error";
+import { MutorCompilerError, MutorError, MutorRuntimeError } from "./error";
 
 export default class MutorBase {
   protected __cacheSize = 0;
@@ -41,6 +41,7 @@ export default class MutorBase {
       onIncludeFail,
       onIncludeError,
       rootDir,
+      debugRuntimeErrors,
     } = conf;
 
     this.__config = {
@@ -63,6 +64,7 @@ export default class MutorBase {
         ...(forbiddenProps || []),
       ]),
       keepOpeningTagEscapeDelimiter: keepOpeningTagEscapeDelimiter ?? false,
+      debugRuntimeErrors: debugRuntimeErrors ?? false,
       delimiters: {
         ...defaultConfig.delimiters,
         ...(overrideDelimeters || {}),
@@ -93,6 +95,7 @@ export default class MutorBase {
         this.__config.forbiddenProps,
         escapeFn,
         validateComputedProp,
+        MutorRuntimeError,
       );
   }
 

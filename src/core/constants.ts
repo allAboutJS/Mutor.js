@@ -116,6 +116,7 @@ export const defaultConfig: MutorConfig = {
     active: true,
     maxSize: 50 * 1024 * 1024, // 50MB
   },
+  debugRuntimeErrors: false,
 };
 
 export const namespaces = {

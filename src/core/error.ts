@@ -37,3 +37,5 @@ export class MutorCompilerError extends MutorError {
     Object.setPrototypeOf(this, MutorCompilerError.prototype);
   }
 }
+
+export class MutorRuntimeError extends MutorCompilerError {}
