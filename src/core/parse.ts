@@ -17,10 +17,11 @@ export default function parse(
     ? closingTagWithWhitespaceCtrl.length
     : delimiters.closingTag.length;
 
-  const inner = templateBlock.slice(openLen, templateBlock.length - closeLen);
-  const trimmed = inner.trim();
+  const inner = templateBlock
+    .slice(openLen, templateBlock.length - closeLen)
+    .trim();
 
-  const isComment = trimmed.startsWith(delimiters.commentTag);
+  const isComment = inner.startsWith(delimiters.commentTag);
   if (isComment) {
     return { isComment, leftTrim, rightTrim };
   }
@@ -30,21 +31,21 @@ export default function parse(
     rightTrim,
     inner,
     isBlock:
-      trimmed.startsWith("for ") ||
-      trimmed.startsWith("if ") ||
-      trimmed === "else" ||
-      trimmed.startsWith("else if ") ||
-      trimmed.startsWith("switch ") ||
-      trimmed.startsWith("case ") ||
-      trimmed === "default" ||
-      trimmed === "break" ||
-      trimmed === "continue",
-    isBlockEnd: trimmed === "end",
-    hasContext: trimmed.startsWith("for "),
+      inner.startsWith("for ") ||
+      inner.startsWith("if ") ||
+      inner === "else" ||
+      inner.startsWith("else if ") ||
+      inner.startsWith("switch ") ||
+      inner.startsWith("case ") ||
+      inner === "default" ||
+      inner === "break" ||
+      inner === "continue",
+    isBlockEnd: inner === "endif" || inner === "endfor",
+    hasContext: inner.startsWith("for "),
     requiresBlockClose:
-      trimmed.startsWith("for ") ||
-      trimmed.startsWith("if ") ||
-      trimmed.startsWith("switch "),
+      inner.startsWith("for ") ||
+      inner.startsWith("if ") ||
+      inner.startsWith("switch "),
     usesAwait: inner.includes("Mutor::await"),
   };
 }
