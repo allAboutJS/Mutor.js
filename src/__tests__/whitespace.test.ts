@@ -28,7 +28,7 @@ describe("Mutor Whitespace Trimming", () => {
     const template = `
       {{ if true ~}}
           Visible
-      {{~ end }}`;
+      {{~ endif }}`;
     const result = engine.render(template, {});
     // Should result in "Visible" without the newlines from the if/end tags
     expect(result.trim()).toBe("Visible");

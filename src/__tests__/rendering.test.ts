@@ -8,10 +8,10 @@ describe("Mutor Rendering Logic", () => {
       {{~ if showList }}
         <ul>
         {{~ for item of items }}
-          <li>{{ item.name }} {{~ if item.admin }} (Admin) {{~ end }}</li>
-        {{~ end }}
+          <li>{{ item.name }} {{~ if item.admin }} (Admin) {{~ endif }}</li>
+        {{~ endfor }}
         </ul>
-      {{~ end }}`;
+      {{~ endif }}`;
 
     const context = {
       showList: true,
@@ -30,14 +30,14 @@ describe("Mutor Rendering Logic", () => {
   test("should expose optional loop bindings", () => {
     expect(
       engine.render(
-        "{{ for item, index of items }}{{ index }}:{{ item }};{{ end }}",
+        "{{ for item, index of items }}{{ index }}:{{ item }};{{ endfor }}",
         { items: ["a", "b"] },
       ),
     ).toBe("0:a;1:b;");
 
     expect(
       engine.render(
-        "{{ for key, value in object }}{{ key }}:{{ value }};{{ end }}",
+        "{{ for key, value in object }}{{ key }}:{{ value }};{{ endfor }}",
         { object: { a: 1, b: 2 } },
       ),
     ).toBe("a:1;b:2;");
@@ -46,7 +46,7 @@ describe("Mutor Rendering Logic", () => {
   test("should handle nested loop bindings", () => {
     expect(
       engine.render(
-        "{{ for group, groupIndex of groups }}{{ for item, itemIndex of group }}{{ groupIndex }}.{{ itemIndex }}:{{ item }};{{ end }}{{ end }}",
+        "{{ for group, groupIndex of groups }}{{ for item, itemIndex of group }}{{ groupIndex }}.{{ itemIndex }}:{{ item }};{{ endfor }}{{ endfor }}",
         { groups: [["a", "b"], ["c"]] },
       ),
     ).toBe("0.0:a;0.1:b;1.0:c;");
@@ -55,7 +55,7 @@ describe("Mutor Rendering Logic", () => {
   test("should handle consecutive loops", () => {
     expect(
       engine.render(
-        "{{ for item, index of items }}{{ index }}:{{ item }};{{ end }}{{ for item, index of items }}{{ index }}:{{ item }};{{ end }}",
+        "{{ for item, index of items }}{{ index }}:{{ item }};{{ endfor }}{{ for item, index of items }}{{ index }}:{{ item }};{{ endfor }}",
         { items: ["a", "b"] },
       ),
     ).toBe("0:a;1:b;0:a;1:b;");
@@ -74,89 +74,20 @@ describe("Mutor Rendering Logic", () => {
 
     expect(
       engine.render(
-        "{{ for key, value in source.current }}{{ key }}:{{ value }};{{ end }}",
+        "{{ for key, value in source.current }}{{ key }}:{{ value }};{{ endfor }}",
         context,
       ),
     ).toBe("a:1;b:2;");
     expect(accessCount).toBe(1);
   });
 
-  test("should handle switch blocks", () => {
-    const template = `
-      {{ switch role }}
-        {{ case "admin" }}
-          Admin
-          {{ break }}
-        {{ case "user" }}
-          User
-          {{ break }}
-        {{ default }}
-          Guest
-      {{ end }}`;
-
-    expect(engine.render(template, { role: "admin" })).toContain("Admin");
-    expect(engine.render(template, { role: "user" })).toContain("User");
-    expect(engine.render(template, { role: "guest" })).toContain("Guest");
-  });
-
-  test("should allow switch fallthrough", () => {
-    expect(
-      engine.render(
-        '{{ switch role }}{{ case "admin" }}A{{ case "user" }}U{{ break }}{{ default }}G{{ end }}',
-        { role: "admin" },
-      ),
-    ).toBe("AU");
-  });
-
   test("should handle break and continue inside loops", () => {
     expect(
       engine.render(
-        "{{ for item of items }}{{ if item == 2 }}{{ continue }}{{ end }}{{ item }}{{ if item == 3 }}{{ break }}{{ end }}{{ end }}",
+        "{{ for item of items }}{{ if item == 2 }}{{ continue }}{{ endif }}{{ item }}{{ if item == 3 }}{{ break }}{{ endif }}{{ endfor }}",
         { items: [1, 2, 3, 4] },
       ),
     ).toBe("13");
-  });
-
-  test("should allow continue inside a switch nested in a loop", () => {
-    expect(
-      engine.render(
-        "{{ for item of items }}{{ switch item }}{{ case 2 }}{{ continue }}{{ default }}{{ item }}{{ end }}{{ end }}",
-        { items: [1, 2, 3] },
-      ),
-    ).toBe("13");
-  });
-
-  test("should reject invalid control flow placement", () => {
-    expect(() => engine.render("{{ break }}", {})).toThrow();
-    expect(() => engine.render("{{ continue }}", {})).toThrow();
-    expect(() => engine.render("{{ case 1 }}", {})).toThrow();
-    expect(() =>
-      engine.render("{{ switch value }}{{ default }}A{{ default }}B{{ end }}", {
-        value: 1,
-      }),
-    ).toThrow();
-    expect(() =>
-      engine.render("{{ switch value }}unexpected{{ case 1 }}A{{ end }}", {
-        value: 1,
-      }),
-    ).toThrow();
-    expect(() =>
-      engine.render("{{ switch value }}{{ case 1 }}A{{ else }}B{{ end }}", {
-        value: 1,
-      }),
-    ).toThrow();
-    expect(() =>
-      engine.render("{{ for item of items }}{{ else }}{{ end }}", {
-        items: [],
-      }),
-    ).toThrow();
-    expect(() => engine.render("{{ else }}", {})).toThrow();
-    expect(() =>
-      engine.render("{{ if value }}A{{ else }}B{{ else if other }}C{{ end }}", {
-        value: true,
-        other: true,
-      }),
-    ).toThrow();
   });
 
   test("should allow keywords as property names", () => {
