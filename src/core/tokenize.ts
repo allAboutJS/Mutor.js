@@ -5,7 +5,8 @@ import { keywords, operators } from "./constants";
 const IDENT_START_PATTERN = /[a-zA-Z$_]/;
 const IDENT_PATTERN = /[a-zA-Z$_0-9]/;
 const NUMBER_START_PATTERN = /[0-9]/;
-const NUMBER_PATTERN = /[0-9.oxe]/;
+const DIGIT_PATTERN = /[0-9]/;
+const HEX_DIGIT_PATTERN = /[0-9a-fA-F]/;
 const VALIDATION_PATTERN = /[a-zA-Z$_0-9\s\t\r\n'"`]/;
 
 export default function tokenize(expr: string) {
@@ -93,14 +94,55 @@ export default function tokenize(expr: string) {
 
   function accumulateNumber() {
     if (NUMBER_START_PATTERN.test(char)) {
-      let j = cursor,
-        buffer = "";
+      let j = cursor;
 
-      while (NUMBER_PATTERN.test(expr[j]) && j < expr.length) {
-        buffer += expr[j];
-        j++;
+      if (expr[j] === "0" && (expr[j + 1] === "x" || expr[j + 1] === "X")) {
+        j += 2;
+
+        const hexStart = j;
+        while (j < expr.length && HEX_DIGIT_PATTERN.test(expr[j])) {
+          j++;
+        }
+
+        if (j === hexStart) {
+          throw { pos: cursor, message: "Found invalid number literal." };
+        }
+      } else {
+        while (j < expr.length && DIGIT_PATTERN.test(expr[j])) {
+          j++;
+        }
+
+        if (expr[j] === ".") {
+          j++;
+
+          while (j < expr.length && DIGIT_PATTERN.test(expr[j])) {
+            j++;
+          }
+        }
+
+        if (expr[j] === "e" || expr[j] === "E") {
+          const exponentStart = j;
+          j++;
+
+          if (expr[j] === "+" || expr[j] === "-") {
+            j++;
+          }
+
+          const exponentDigitStart = j;
+          while (j < expr.length && DIGIT_PATTERN.test(expr[j])) {
+            j++;
+          }
+
+          if (j === exponentDigitStart) {
+            throw {
+              pos: exponentStart,
+              message: "Found invalid number literal.",
+            };
+          }
+        }
       }
 
+      const buffer = expr.slice(cursor, j);
       const numVal = Number(buffer);
       const isNan = Number.isNaN(numVal);
 
