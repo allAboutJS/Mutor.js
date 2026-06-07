@@ -12,7 +12,7 @@ import createRuntimeFrame from "../utils/create-runtime";
 import escapeFn from "../utils/escape-fn";
 import toAbsolutePath from "../utils/to-absolute-path";
 import validateComputedProp from "../utils/validate-computed-prop";
-import { MutorError } from "./error";
+import { MutorError, MutorRuntimeError } from "./error";
 import MutorBase from "./mutor.base";
 
 export default class MutorServer extends MutorBase {
@@ -138,6 +138,7 @@ export default class MutorServer extends MutorBase {
         this.__config.forbiddenProps,
         escapeFn,
         validateComputedProp,
+        MutorRuntimeError,
       );
 
       return result;
@@ -156,6 +157,19 @@ export default class MutorServer extends MutorBase {
     return new Promise((resolve) => {
       resolve(this.renderFile(path, context));
     });
+  }
+
+  invalidateCacheEntry(path: string) {
+    const absolutePath = this.__resolvePath(path);
+    const entry = this.__compiledTemplatesMap.get(absolutePath);
+
+    if (!entry) {
+      return false;
+    }
+
+    this.__cacheSize -= entry.size;
+    this.__compiledTemplatesMap.delete(absolutePath);
+    return true;
   }
 
   async buildDir(src: string, destination: string, context: any) {

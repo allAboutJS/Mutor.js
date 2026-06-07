@@ -110,6 +110,17 @@ export default class MutorBase {
     return this.__renderWithRuntime(template, runtime);
   }
 
+  invalidateCacheEntry(identifier: string) {
+    const entry = this.__compiledTemplatesMap.get(identifier);
+    if (!entry) {
+      return false;
+    }
+
+    this.__cacheSize -= entry.size;
+    this.__compiledTemplatesMap.delete(identifier);
+    return true;
+  }
+
   protected __renderWithRuntime(
     template: string,
     runtime: RuntimeFrame,
