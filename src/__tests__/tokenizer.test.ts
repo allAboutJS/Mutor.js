@@ -27,6 +27,30 @@ describe("Tokenizer", () => {
     expect(tokens[1].value).toBe("3.14");
   });
 
+  test("tokenizes exponent number literals", () => {
+    const tokens = tokenize("1e3 1e-3 1e+3 1E-3 0x10 0X10");
+
+    expect(tokens.map((t) => t.value)).toEqual([
+      "1000",
+      "0.001",
+      "1000",
+      "0.001",
+      "16",
+      "16",
+    ]);
+  });
+
+  test("does not absorb arithmetic signs into number literals", () => {
+    const tokens = tokenize("1+2 3-4");
+
+    expect(tokens.map((t) => t.value)).toEqual(["1", "+", "2", "3", "-", "4"]);
+  });
+
+  test("throws on malformed exponent and hex literals", () => {
+    expect(() => tokenize("1e-")).toThrow("Found invalid number literal.");
+    expect(() => tokenize("0x")).toThrow("Found invalid number literal.");
+  });
+
   test("tokenizes multi-character operators", () => {
     const tokens = tokenize("a == b && c !== d || e ?? f :: g ** h >> i << j");
     const operators = tokens
