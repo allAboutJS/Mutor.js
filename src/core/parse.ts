@@ -35,17 +35,11 @@ export default function parse(
       inner.startsWith("if ") ||
       inner === "else" ||
       inner.startsWith("else if ") ||
-      inner.startsWith("switch ") ||
-      inner.startsWith("case ") ||
-      inner === "default" ||
       inner === "break" ||
       inner === "continue",
     isBlockEnd: inner === "endif" || inner === "endfor",
     hasContext: inner.startsWith("for "),
-    requiresBlockClose:
-      inner.startsWith("for ") ||
-      inner.startsWith("if ") ||
-      inner.startsWith("switch "),
+    requiresBlockClose: inner.startsWith("for ") || inner.startsWith("if "),
     usesAwait: inner.includes("Mutor::await"),
   };
 }
