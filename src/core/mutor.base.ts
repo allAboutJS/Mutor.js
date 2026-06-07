@@ -134,6 +134,7 @@ export default class MutorBase {
       this.__config.forbiddenProps,
       escapeFn,
       validateComputedProp,
+      MutorRuntimeError,
     );
 
     return result;

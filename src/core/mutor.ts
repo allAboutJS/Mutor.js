@@ -2,7 +2,7 @@ import type { PartialMutorConfig, RuntimeFrame } from "../types/types";
 import createRuntimeFrame from "../utils/create-runtime";
 import escapeFn from "../utils/escape-fn";
 import validateComputedProp from "../utils/validate-computed-prop";
-import { MutorError } from "./error";
+import { MutorError, MutorRuntimeError } from "./error";
 import MutorBase from "./mutor.base";
 
 export default class Mutor extends MutorBase {
@@ -80,6 +80,7 @@ export default class Mutor extends MutorBase {
         this.__config.forbiddenProps,
         escapeFn,
         validateComputedProp,
+        MutorRuntimeError,
       );
 
       return result;
