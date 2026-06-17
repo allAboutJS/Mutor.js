@@ -15,20 +15,26 @@ import validateComputedProp from "../utils/validate-computed-prop";
 import { MutorError, MutorRuntimeError } from "./error";
 import MutorBase, { LAYOUT_DIRECTIVE_REGEX } from "./mutor.base";
 
+/**
+ * MutorServer is the main server class for the Mutor template engine.
+ * It extends MutorBase and provides server-specific functionality.
+ */
 export default class MutorServer extends MutorBase {
   constructor(config: PartialMutorConfig = {}) {
     super(config);
     this.__setupIncludeForRuntime(createRuntimeFrame(null));
 
-    /** Use file path to register layouts */
+    // Instantiate addLayoutFromPath as an instance method
     this.addLayoutFromPath = (path: string) => {
       const src = readFileSync(toAbsolutePath(path), "utf-8");
       super.addLayout(src);
     };
   }
 
+  /** Registers a layout from a file path. */
   addLayoutFromPath: (path: string) => void;
 
+  /** Resolves a path, optionally using a rendered path as the base. */
   private __resolvePath(path: string, renderedPath?: string) {
     const isAlias = path.startsWith("@/");
     const root = this.__config.rootDir
@@ -46,6 +52,7 @@ export default class MutorServer extends MutorBase {
     return resolve(root, path);
   }
 
+  /** Sets up the include function for the runtime. */
   private __setupIncludeForRuntime(runtime: RuntimeFrame) {
     this.__namespaces.Mutor.include = (path: string, context: any) => {
       const root = this.__config.rootDir
@@ -89,12 +96,14 @@ export default class MutorServer extends MutorBase {
     };
   }
 
+  /** Renders a template with the given context. */
   render(template: string, context?: any): string {
     const runtime = createRuntimeFrame(context);
     this.__setupIncludeForRuntime(runtime);
     return this.__renderWithRuntime(template, runtime);
   }
 
+  /** Renders a file with the given context. */
   private __renderFile(path: string, context: any, runtime: RuntimeFrame) {
     this.__setupIncludeForRuntime(runtime);
 
@@ -169,6 +178,7 @@ export default class MutorServer extends MutorBase {
     }
   }
 
+  /** Renders a file with the given context. */
   renderFile(path: string, context: any): string {
     return this.__renderFile(path, context, createRuntimeFrame(null));
   }

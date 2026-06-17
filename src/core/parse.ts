@@ -28,7 +28,10 @@ export default function parse(
     .slice(openLen, templateBlock.length - closeLen)
     .trim();
 
-  const isComment = inner.startsWith(delimiters.commentTag);
+  const isComment = leftTrim
+    ? templateBlock.startsWith(`${openingTagWithWhitespaceCtrl}#`)
+    : templateBlock.startsWith(`${delimiters.openingTag}#`);
+
   if (isComment) {
     return { isComment, leftTrim, rightTrim };
   }

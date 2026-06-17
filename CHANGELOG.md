@@ -2,6 +2,17 @@
 
 All notable changes to Mutor.js will be documented in this file.
 
+## [3.0.1] - 2026-06-17
+
+### Added
+
+- Validation that custom `openingTag` and `closingTag` delimiters do not overlap
+
+### Changed
+
+- Comment syntax is now fixed to `#` and no longer configurable through delimiters
+- Internal server code comments and method documentation were clarified
+
 ## [3.0.0] - 2026-06-17
 
 ### Added

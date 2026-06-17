@@ -74,6 +74,20 @@ export default class MutorBase {
       debugRuntimeErrors,
     } = conf;
 
+    const delimiters = {
+      ...defaultConfig.delimiters,
+      ...(overrideDelimeters || {}),
+    };
+
+    if (
+      delimiters.openingTag.startsWith(delimiters.closingTag) ||
+      delimiters.closingTag.startsWith(delimiters.openingTag)
+    ) {
+      throw new MutorError(
+        "The openingTag and closingTag delimiters cannot overlap.",
+      );
+    }
+
     this.__config = {
       build: {
         include: new Set([...(build?.include || defaultConfig.build.include)]),
@@ -95,10 +109,7 @@ export default class MutorBase {
       ]),
       preserveEscapeDelimiter: preserveEscapeDelimiter === true,
       debugRuntimeErrors: debugRuntimeErrors === true,
-      delimiters: {
-        ...defaultConfig.delimiters,
-        ...(overrideDelimeters || {}),
-      },
+      delimiters,
     };
 
     return this.__config;

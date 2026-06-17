@@ -2,11 +2,22 @@ import { TokenType } from "../types/enums";
 import type { Token } from "../types/types";
 import { keywords, operators } from "./constants";
 
+/** The pattern for the start of an identifier. */
 const IDENT_START_PATTERN = /[a-zA-Z$_]/;
+
+/** The pattern for an identifier. */
 const IDENT_PATTERN = /[a-zA-Z$_0-9]/;
+
+/** The pattern for the start of a number. */
 const NUMBER_START_PATTERN = /[0-9]/;
+
+/** The pattern for a digit. */
 const DIGIT_PATTERN = /[0-9]/;
+
+/** The pattern for a hex digit. */
 const HEX_DIGIT_PATTERN = /[0-9a-fA-F]/;
+
+/** The pattern for a valid character. */
 const VALIDATION_PATTERN = /[a-zA-Z$_0-9\s\t\r\n'"`]/;
 
 /**
@@ -19,6 +30,7 @@ export default function tokenize(expr: string) {
     char = "";
   const tokens: Token[] = [];
 
+  /** Accumulates a keyword or identifier token. */
   function accumulateKeywordOrIdentifier() {
     let buffer = "";
     if (IDENT_START_PATTERN.test(char)) {
@@ -39,6 +51,7 @@ export default function tokenize(expr: string) {
     }
   }
 
+  /** Accumulates a string literal token. */
   function accumulateStr() {
     if (char !== '"' && char !== "'" && char !== "`") {
       return false;
@@ -97,6 +110,7 @@ export default function tokenize(expr: string) {
     cursor = j;
   }
 
+  /** Accumulates a number token. */
   function accumulateNumber() {
     if (NUMBER_START_PATTERN.test(char)) {
       let j = cursor;
@@ -161,6 +175,7 @@ export default function tokenize(expr: string) {
     }
   }
 
+  /** Accumulates an operator token. */
   function accumulateOperator() {
     const op = `${char}${expr[cursor + 1]}`;
     if (operators.has(op)) {

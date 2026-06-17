@@ -1,5 +1,13 @@
 import { MutorError } from "../core/error";
 
+/**
+ * Validates a computed property key against a set of allowed and forbidden props.
+ *
+ * @param value - The computed property key to validate.
+ * @param allowedProps - The set of allowed props.
+ * @param forbiddenProps - The set of forbidden props.
+ * @returns The validated computed property key.
+ */
 export default function validateComputedProp(
   value: unknown,
   allowedProps: Set<string | number>,

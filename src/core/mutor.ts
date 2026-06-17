@@ -5,6 +5,10 @@ import validateComputedProp from "../utils/validate-computed-prop";
 import { MutorError, MutorRuntimeError } from "./error";
 import MutorBase from "./mutor.base";
 
+/**
+ * Mutor is the main client class for the Mutor template engine.
+ * It extends MutorBase and provides client-specific functionality.
+ */
 export default class Mutor extends MutorBase {
   constructor(config: PartialMutorConfig = {}) {
     super(config);

@@ -196,7 +196,6 @@ export interface MutorConfig {
     closingTag: string;
     whitespaceTrim: string;
     openingTagEscape: string;
-    commentTag: string;
   };
   debugRuntimeErrors: boolean;
 }

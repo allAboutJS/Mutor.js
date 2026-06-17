@@ -95,7 +95,7 @@ Mutor expressions live inside `{{ ... }}`.
 
 ### Comments
 
-Comments are removed from the rendered output.
+Comments are removed from the rendered output. Mutor uses a fixed `#` comment marker for consistency.
 
 ```html
 {{# This will not render }}
@@ -284,7 +284,7 @@ import Mutor from "mutorjs";
 
 const mutor = new Mutor();
 
-mutor.addLayout(`
+mutor.registerLayout(`
 {{# layout "shell" }}
 <html>
   <body>
@@ -304,12 +304,12 @@ mutor.renderComponent("page", { title: "Dashboard" });
 ### Nested layouts
 
 ```ts
-mutor.addLayout(`
+mutor.registerLayout(`
 {{# layout "outer" }}
 <outer>{{ ::slot }}</outer>
 `);
 
-mutor.addLayout(`
+mutor.registerLayout(`
 {{# layout "inner" }}
 {{# use "outer" }}
 <inner>{{ ::slot }}</inner>
@@ -509,7 +509,6 @@ const mutor = new Mutor({
     closingTag: "}}",
     openingTagEscape: "\\",
     whitespaceTrim: "~",
-    commentTag: "#",
   },
   build: {
     include: new Set([".html", ".txt"]),
@@ -526,7 +525,7 @@ Escapes interpolated output. Enabled by default.
 Allows templates to call functions from context values. Disabled by default.
 
 ### `delimiters`
-Customize tags and control markers.
+Customize tags and control markers. Comment syntax is fixed to `#` and is not configurable.
 
 ### `preserveEscapeDelimiter`
 Controls whether escaped opening tags keep their escape marker.

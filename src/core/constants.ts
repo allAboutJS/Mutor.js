@@ -86,12 +86,18 @@ export const ESCAPE_MAP: Record<string, string> = {
 
 /** The default Mutor configuration object. */
 export const defaultConfig: MutorConfig = {
+  /** Build configuration for the Mutor engine. */
   build: {
+    /** The set of file extensions to include in the build. */
     include: new Set([".html", ".txt"]),
+    /** The set of file extensions to exclude from the build. */
     exclude: new Set(["node_modules", ".git"]),
   },
+  /** Whether to auto-escape output values. */
   autoEscape: true,
+  /** The set of allowed properties. */
   allowedProps: new Set(),
+  /** The set of forbidden properties. */
   forbiddenProps: new Set([
     "__proto__",
     "constructor",
@@ -104,20 +110,31 @@ export const defaultConfig: MutorConfig = {
     "callee",
     "arguments",
   ]),
+  /** Whether to allow function calls. */
   allowFnCalls: false,
+  /** The delimiters to use for template expressions. */
   delimiters: {
+    /** The closing tag for template expressions. */
     closingTag: "}}",
+    /** The opening tag for template expressions. */
     openingTag: "{{",
+    /** The escape character for template expressions. */
     openingTagEscape: "\\",
+    /** The whitespace trim character for template expressions. */
     whitespaceTrim: "~",
-    commentTag: "#",
   },
+  /** Whether to preserve the escape delimiter in the output. */
   preserveEscapeDelimiter: false,
+  /** The action to take when an include fails. */
   onIncludeFail: "throw",
+  /** The cache configuration. */
   cache: {
+    /** Whether the cache is active. */
     active: true,
+    /** The maximum size of the cache in bytes. Defaults to 50MB. */
     maxSize: 50 * 1024 * 1024, // 50MB
   },
+  /** Whether to debug runtime errors. */
   debugRuntimeErrors: false,
 };
 
