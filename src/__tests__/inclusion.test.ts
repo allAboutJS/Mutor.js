@@ -37,7 +37,27 @@ describe("Mutor Inclusion & Circularity", () => {
     );
 
     expect(() => engine.renderFile(join(testDir, "a.html"), {})).toThrow(
-      /Circular include detected/,
+      /Circular dependency detected/,
+    );
+  });
+
+  test("should resolve top-level renderFile paths relative to rootDir", async () => {
+    const pagesDir = join(testDir, "pages");
+    await mkdir(pagesDir, { recursive: true });
+    await writeFile(join(pagesDir, "home.html"), "Home");
+
+    const rootedEngine = new Mutor({ rootDir: testDir });
+
+    expect(rootedEngine.renderFile("./pages/home.html", {})).toBe("Home");
+  });
+
+  test("should reject build destinations inside the source directory", async () => {
+    await writeFile(join(testDir, "build-source.html"), "Hello");
+
+    await expect(
+      engine.buildDir(testDir, join(testDir, "dist"), {}),
+    ).rejects.toThrow(
+      /Destination directory cannot be the same as or a subdirectory of the source directory/,
     );
   });
 });

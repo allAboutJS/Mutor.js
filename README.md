@@ -1,8 +1,8 @@
 # Mutor.js
 
-Mutor.js is a small, fast templating engine for people who want templates to be expressive without turning them into a second application runtime.
+Mutor.js is a fast, synchronous templating engine for Node.js and the browser.
 
-It gives you interpolation, conditionals, loops, partials, file rendering, async values, escaping, and a guarded expression system. It does not ship layout inheritance on purpose. In Mutor, complex pages are built from partials/components and the right context.
+It provides interpolation, conditionals, loops, includes, registered components, file rendering, directory builds, and layout composition through top-of-file directives.
 
 ```ts
 import Mutor from "mutorjs";
@@ -30,18 +30,27 @@ yarn add mutorjs
 pnpm add mutorjs
 ```
 
+## What changed in v3
+
+- Sync-only runtime and API surface
+- Official layout support via `{{# layout ... }}` and `{{# use ... }}`
+- File-based layout loading for the server runtime
+- Improved file path resolution for `renderFile(...)` and includes
+- Stronger directory build guards
+- Expanded regression coverage for client and server behavior
+
 ## Why Mutor
 
-- Small template language with familiar JavaScript-like expressions.
-- HTML escaping is on by default.
-- Dangerous properties such as `constructor`, `prototype`, and `__proto__` are blocked.
-- Function calls are restricted by default.
-- Partials/components are first-class.
-- Server rendering supports file includes and directory builds.
-- Async values work through `Mutor::await`.
-- Cache entries can be inspected, reset, or invalidated.
+- Small template language with familiar JavaScript-like expressions
+- Synchronous API designed for predictable rendering flows
+- HTML escaping enabled by default
+- Includes and reusable components
+- Layout composition with explicit top-of-file directives
+- Server-side file rendering, directory builds, and cache support
+- Function calls from context values are disabled by default
+- Dangerous properties such as `constructor`, `prototype`, and `__proto__` are blocked
 
-## Quick Start
+## Quick start
 
 ```ts
 import Mutor from "mutorjs";
@@ -61,7 +70,7 @@ const html = mutor.render(template, {
 });
 ```
 
-By default, strings are escaped before they are written:
+By default, interpolated values are escaped before they are written:
 
 ```ts
 mutor.render("{{ value }}", {
@@ -76,7 +85,7 @@ Disable escaping only when you know the output is already safe:
 const mutor = new Mutor({ autoEscape: false });
 ```
 
-## Template Syntax
+## Template syntax
 
 Mutor expressions live inside `{{ ... }}`.
 
@@ -92,7 +101,7 @@ Comments are removed from the rendered output.
 {{# This will not render }}
 ```
 
-### Whitespace Control
+### Whitespace control
 
 Use `~` next to a tag to trim whitespace on that side.
 
@@ -100,13 +109,7 @@ Use `~` next to a tag to trim whitespace on that side.
 Hello {{~ name ~}} !
 ```
 
-With `name = "Ada"`, that renders:
-
-```html
-HelloAda!
-```
-
-### Escaped Tags
+### Escaped tags
 
 Prefix an opening tag with the escape delimiter when you want the tag to appear as text.
 
@@ -120,78 +123,37 @@ That renders:
 {{ name }}
 ```
 
-If `preserveEscapeDelimiter` is enabled, the escape delimiter is kept too.
+## Values and expressions
 
-## Values And Literals
+Mutor supports:
 
-Mutor supports simple literals:
+- strings
+- numbers
+- booleans
+- `null`
+- `undefined`
+- property access with `.` and `[]`
+- optional chaining with `?.`
+- arithmetic and comparison operators
+- `&&`, `||`, and `??`
+- unary operators
+- ternaries
+- grouped expressions
 
-```html
-{{ "hello" }}
-{{ 'hello' }}
-{{ `hello` }}
-{{ 42 }}
-{{ 3.14 }}
-{{ 1e-3 }}
-{{ true }}
-{{ false }}
-{{ null }}
-{{ undefined }}
-```
-
-Mutor does not allow JavaScript object literals, array literals, function literals, arrow functions, or constructors inside templates:
-
-```html
-{{ { name: "Ada" } }}      <!-- not allowed -->
-{{ [1, 2, 3] }}            <!-- not allowed -->
-{{ function() {} }}        <!-- not allowed -->
-{{ () => {} }}             <!-- not allowed -->
-{{ new User() }}           <!-- not allowed -->
-```
-
-When you need an array or object value in a template expression, pass it in the context or create it from JSON:
-
-```html
-{{ JSON::parse("[1,2,3]")[0] }}
-{{ JSON::parse('{"name":"Ada"}').name }}
-```
-
-Passing values through context is usually cleaner:
-
-```ts
-mutor.render("{{ user.name }}", {
-  user: { name: "Ada" },
-});
-```
-
-## Expressions
-
-Mutor expressions are intentionally familiar:
+Examples:
 
 ```html
 {{ user.name }}
 {{ user?.profile?.name }}
 {{ user["name"] }}
 {{ count + 1 }}
-{{ price * quantity }}
 {{ score >= 80 }}
 {{ admin && active }}
 {{ name ?? "Anonymous" }}
 {{ admin ? "Admin" : "Member" }}
 ```
 
-Supported expression pieces include:
-
-- property access with `.` and `[]`
-- optional chaining with `?.`
-- arithmetic operators such as `+`, `-`, `*`, `/`, `%`, `**`
-- comparison operators such as `>`, `<`, `>=`, `<=`
-- equality operators `==` and `!=`
-- logical operators `&&`, `||`, `??`
-- bitwise operators `&`, `|`, `^`, `>>`, `<<`
-- unary operators `!`, `+`, `-`
-- ternaries with `condition ? yes : no`
-- grouping with parentheses
+Mutor does not allow JavaScript object literals, array literals, function literals, arrow functions, or constructors inside templates.
 
 ## Conditionals
 
@@ -231,7 +193,7 @@ Use `in` for object keys:
 {{ endfor }}
 ```
 
-You can add an optional second binding for the value:
+Or bind both key and value:
 
 ```html
 {{ for key, value in user }}
@@ -239,54 +201,50 @@ You can add an optional second binding for the value:
 {{ endfor }}
 ```
 
-`break` and `continue` are available inside loops:
+`break` and `continue` are available inside loops.
 
 ```html
 {{ for item of items }}
-  {{ if item.hidden }}{{ continue }}{{ endif }}
-  {{ item.name }}
-  {{ if item.last }}{{ break }}{{ endif }}
+  {{ if item == 2 }}{{ continue }}{{ endif }}
+  {{ item }}
+  {{ if item == 3 }}{{ break }}{{ endif }}
 {{ endfor }}
 ```
 
-## Partials And Composition
+With `items = [1, 2, 3, 4]`, that renders:
 
-Mutor does not have layouts. That is a design choice.
+```txt
+13
+```
 
-Instead, build pages from partials/components and pass the context they need. This keeps the core smaller and makes composition explicit.
+## Includes and components
+
+Mutor can render registered components and nested partials through `Mutor::include(...)`.
 
 ```ts
 import Mutor from "mutorjs";
 
-const mutor = new Mutor({ autoEscape: false });
+const mutor = new Mutor();
 
-mutor.registerComponent(
-  "shell",
-  `
-<!doctype html>
-<html>
-  <head><title>{{ title }}</title></head>
-  <body>
-    {{ Mutor::include("nav") }}
-    <main>{{ content }}</main>
-  </body>
-</html>
-`,
-);
-
-mutor.registerComponent(
-  "nav",
-  `
+mutor.registerComponent("nav", `
 <nav>
   {{ for item of nav }}
     <a href="{{ item.href }}">{{ item.label }}</a>
   {{ endfor }}
 </nav>
-`,
-);
+`);
+
+mutor.registerComponent("shell", `
+<!doctype html>
+<html>
+  <body>
+    {{ Mutor::include("nav") }}
+    <main>{{ content }}</main>
+  </body>
+</html>
+`);
 
 const page = mutor.render('{{ Mutor::include("shell") }}', {
-  title: "Dashboard",
   content: "<h1>Welcome</h1>",
   nav: [
     { href: "/", label: "Home" },
@@ -301,28 +259,73 @@ If no context is passed to an include, it inherits the parent context:
 {{ Mutor::include("profile-card") }}
 ```
 
-Pass a different context when the partial should render against a smaller or different value:
+Pass a different context when the include should render against a different value:
 
 ```html
 {{ Mutor::include("profile-card", user) }}
 ```
 
-Inside any template or partial, the current context is available as `Mutor::$$context`:
+The current context is always available as `Mutor::$$context`:
 
 ```html
 <pre>{{ JSON::stringify(Mutor::$$context, 2) }}</pre>
 ```
 
-That is useful for generic components that render the value they were given:
+## Layouts
+
+Mutor v3 supports layouts through top-of-file directives.
+
+This is intentional metadata-style syntax, similar in spirit to directives like `"use strict"` or `"use client"`: layouts must be declared at the top of the template.
+
+### Register a layout in memory
 
 ```ts
-mutor.registerComponent("badge", `<span>{{ Mutor::$$context }}</span>`);
+import Mutor from "mutorjs";
 
-mutor.render('{{ Mutor::include("badge", "New") }}', {});
-// <span>New</span>
+const mutor = new Mutor();
+
+mutor.addLayout(`
+{{# layout "shell" }}
+<html>
+  <body>
+    {{ ::slot }}
+  </body>
+</html>
+`);
+
+mutor.registerComponent("page", `
+{{# use "shell" }}
+<h1>{{ title }}</h1>
+`);
+
+mutor.renderComponent("page", { title: "Dashboard" });
 ```
 
-## Server Rendering
+### Nested layouts
+
+```ts
+mutor.addLayout(`
+{{# layout "outer" }}
+<outer>{{ ::slot }}</outer>
+`);
+
+mutor.addLayout(`
+{{# layout "inner" }}
+{{# use "outer" }}
+<inner>{{ ::slot }}</inner>
+`);
+```
+
+### Layout rules
+
+- `{{# layout "name" }}` declares a layout template
+- `{{# use "name" }}` applies a layout
+- `{{ ::slot }}` renders the child content inside the layout
+- directives must appear at the top of the template
+- missing layouts throw an error
+- circular layout dependencies are rejected
+
+## Server rendering
 
 Use the server entry when templates live on disk.
 
@@ -337,6 +340,8 @@ const html = mutor.renderFile("./pages/home.html", {
   title: "Home",
 });
 ```
+
+### File includes
 
 Server includes resolve relative to the file currently being rendered:
 
@@ -353,7 +358,22 @@ Use the `@/` alias to resolve from `rootDir`:
 {{ Mutor::include("@/partials/header.html") }}
 ```
 
-### Build A Directory
+Includes are constrained to the configured `rootDir` when one is set.
+
+### File-based layouts
+
+You can register layouts from files or directories:
+
+```ts
+import Mutor from "mutorjs/server";
+
+const mutor = new Mutor({ rootDir: "./views" });
+
+mutor.addLayoutFromPath("./views/layouts/root.html");
+await mutor.addLayoutsInDir("./views/layouts");
+```
+
+### Build a directory
 
 `buildDir` renders matching template files and copies everything else.
 
@@ -365,7 +385,11 @@ await mutor.buildDir("./site", "./dist", {
 
 By default, `.html` and `.txt` files are rendered. `node_modules` and `.git` are skipped.
 
-### Compile A Directory
+Layout files are used during rendering and are not written to the output directory unless you pass the optional `keepLayoutFiles` flag.
+
+The destination directory must not be the same as, or a child of, the source directory.
+
+### Compile a directory
 
 `compileDir` precompiles matching files into the cache.
 
@@ -373,54 +397,33 @@ By default, `.html` and `.txt` files are rendered. `node_modules` and `.git` are
 await mutor.compileDir("./views");
 ```
 
-After that, `renderFile` can use cached compiled templates.
-
-## Async Templates
-
-Use `Mutor::await` when a value may be a promise.
-
-```html
-Hello, {{ (Mutor::await(userPromise)).name }}
-```
-
-Use the async render methods for templates that use `Mutor::await`:
-
-```ts
-const html = await mutor.renderAsync(
-  "Hello, {{ Mutor::await(namePromise) }}",
-  {
-    namePromise: Promise.resolve("Ada"),
-  },
-);
-```
-
-Server and component APIs also have async forms:
-
-```ts
-await mutor.renderFileAsync("./page.html", context);
-await mutor.renderAsyncComponent("card", context);
-```
-
-Good to know: `Mutor::await` makes the compiled template async. Prefer the async APIs for templates that use it.
+When layout directives are found in matching files, those layouts are registered during compilation.
 
 ## Namespaces
 
 Namespaces are trusted helper groups available from templates. Namespace calls are allowed even when normal function calls are disabled.
 
+Mutor-specific namespace members also support a shorthand alias: `::prop` is equivalent to `Mutor::prop`.
+
+Examples:
+
 ```html
-{{ Math::max(10, 20) }}
+{{ Math::abs(-5) }}
 {{ Array::range(1, 3) }}
 {{ Object::keys(user) }}
 {{ JSON::stringify(user) }}
 {{ String::capitalize(name) }}
-{{ Date::iso() }}
-{{ URL::encode(query) }}
+{{ HTML::escape(value) }}
+{{ HTML::safe(trustedHtml) }}
+{{ Mutor::$$context }}
+{{ ::$$context }}
 ```
 
 Useful built-ins include:
 
 | Namespace | Examples |
 | --- | --- |
+| `HTML` | `escape`, `safe` |
 | `JSON` | `stringify`, `parse` |
 | `Object` | `keys`, `values`, `entries`, `hasOwn`, `fromEntries`, `pick`, `omit` |
 | `Array` | `isArray`, `from`, `of`, `unique`, `compact`, `chunk`, `range` |
@@ -430,20 +433,27 @@ Useful built-ins include:
 | `Date` | `now`, `parse`, `new`, `iso`, `timestamp` |
 | `Boolean` | `valueOf` |
 | `URL` | `encode`, `decode` |
-| `Mutor` | `include`, `await`, `$$context` |
+| `Mutor` | `include`, `$$context` |
 
-## Security Model
+For example, these are equivalent:
 
-Mutor is designed to keep templates useful without handing them the whole JavaScript runtime.
+```html
+{{ Mutor::include("card") }}
+{{ ::include("card") }}
+```
+
+## Security model
+
+Mutor is designed to keep templates constrained without exposing the full JavaScript runtime.
 
 By default:
 
-- HTML strings are escaped.
-- Function calls from context values are disabled.
-- Namespace calls are allowed.
-- Dangerous property names are blocked.
-- Computed property access is validated.
-- Template expressions are parsed by Mutor, not executed as arbitrary JavaScript source.
+- interpolated values are escaped
+- function calls from context values are disabled
+- namespace calls are allowed
+- dangerous property names are blocked
+- computed property access is validated
+- template expressions are parsed by Mutor rather than executed as arbitrary template source
 
 Blocked properties include:
 
@@ -477,13 +487,9 @@ const mutor = new Mutor({
 });
 ```
 
-With `allowFnCalls: false`, this is blocked:
+Mutor is a template engine, not a complete sandbox for hostile code.
 
-```html
-{{ user.deleteAccount() }}
-```
-
-Mutor is a template engine, not a complete sandbox for hostile code. If users can write templates, keep the default restrictions unless you have a reason to loosen them.
+Mutor also does not claim to be a complete HTML sanitization system. Default escaping is useful for ordinary templating, but context-sensitive output handling remains the caller's responsibility. Use `HTML::safe(...)` only for trusted values.
 
 ## Configuration
 
@@ -514,99 +520,36 @@ const mutor = new Mutor({
 ```
 
 ### `autoEscape`
-
-Escapes HTML-sensitive characters in strings. Enabled by default.
+Escapes interpolated output. Enabled by default.
 
 ### `allowFnCalls`
-
 Allows templates to call functions from context values. Disabled by default.
 
-Namespace calls such as `Math::max(1, 2)` are still allowed.
-
 ### `delimiters`
-
 Customize tags and control markers.
 
-```ts
-const mutor = new Mutor({
-  delimiters: {
-    openingTag: "{%",
-    closingTag: "%}",
-  },
-});
-```
-
 ### `preserveEscapeDelimiter`
-
 Controls whether escaped opening tags keep their escape marker.
 
 ### `rootDir`
-
-Used by the server renderer for `@/` includes.
+Used by the server renderer for top-level file resolution and `@/` includes.
 
 ### `cache`
-
 Controls compiled template caching.
 
-```ts
-const mutor = new Mutor({
-  cache: {
-    active: true,
-    maxSize: 10 * 1024 * 1024,
-  },
-});
-```
-
 ### `build`
-
 Controls which files `buildDir` and `compileDir` process.
 
-```ts
-const mutor = new Mutor({
-  build: {
-    include: new Set([".html", ".md"]),
-    exclude: new Set(["node_modules", ".git", "drafts"]),
-  },
-});
-```
-
 ### `onIncludeFail`
-
 Controls what happens when an include fails.
 
-```ts
-const mutor = new Mutor({
-  onIncludeFail: "throw", // "throw" | "ignore" | "ignoreLog"
-});
-```
-
 ### `onIncludeError`
-
-Return fallback content for failed includes.
-
-```ts
-const mutor = new Mutor({
-  onIncludeFail: "ignore",
-  onIncludeError(meta, err) {
-    return `<!-- include failed: ${meta.path} -->`;
-  },
-});
-```
+Returns fallback content for failed includes.
 
 ### `debugRuntimeErrors`
-
 Wraps runtime failures with template source context.
 
-```ts
-const mutor = new Mutor({
-  debugRuntimeErrors: true,
-  allowFnCalls: true,
-});
-```
-
-This is helpful during development because errors point back to the template line and column.
-
-## Cache
+## Cache and diagnostics
 
 Mutor caches compiled templates by identifier or absolute file path.
 
@@ -614,17 +557,21 @@ For registered components:
 
 ```ts
 mutor.registerComponent("card", "<article>{{ title }}</article>");
-mutor.invalidateCacheEntry("card");
+mutor.invalidateTemplateCacheEntry("card");
 ```
 
 For server files:
 
 ```ts
 mutor.renderFile("./views/page.html", context);
-mutor.invalidateCacheEntry("./views/page.html");
+mutor.invalidateTemplateCacheEntry("./views/page.html");
 ```
 
-The next render recompiles the template.
+For layout files in the server runtime:
+
+```ts
+mutor.invalidateLayoutCacheEntry("./views/layouts/root.html");
+```
 
 Inspect cache usage:
 
@@ -632,27 +579,11 @@ Inspect cache usage:
 mutor.getDiagnostics();
 ```
 
-Example result:
-
-```ts
-{
-  bytesUsed: 1200,
-  bytesMax: 52428800,
-  readableUsed: "0.00 MB",
-  readableMax: "50.00 MB",
-  totalEntries: 2,
-  percentFull: 0,
-  avgTemplateSize: 600
-}
-```
-
-Clear all cache entries and restore default config:
+Reset cache and restore default config:
 
 ```ts
 mutor.reset();
 ```
-
-Good to know: Mutor does not watch files. If a template file changes while cache is active, call `invalidateCacheEntry`, call `reset`, or disable cache in development.
 
 ## API
 
@@ -665,97 +596,34 @@ import Mutor from "mutorjs";
 ```
 
 #### `render(template, context)`
-
 Renders a template string.
 
-```ts
-mutor.render("Hello {{ name }}", { name: "Ada" });
-```
-
-#### `renderAsync(template, context)`
-
-Renders a template string through a promise. Use this when the template uses `Mutor::await`.
-
-```ts
-await mutor.renderAsync("{{ Mutor::await(value) }}", {
-  value: Promise.resolve("done"),
-});
-```
-
 #### `compile(template)`
-
 Compiles a template and returns a reusable function.
 
-```ts
-const renderGreeting = mutor.compile("Hello {{ name }}");
-
-renderGreeting({ name: "Ada" });
-renderGreeting({ name: "Grace" });
-```
-
 #### `registerComponent(identifier, template)`
-
 Registers a reusable component/partial.
 
-```ts
-mutor.registerComponent("button", "<button>{{ label }}</button>");
-```
-
 #### `renderComponent(identifier, context)`
-
 Renders a registered component.
 
-```ts
-mutor.renderComponent("button", { label: "Save" });
-```
+#### `addLayout(template)`
+Registers an in-memory layout.
 
-#### `renderAsyncComponent(identifier, context)`
-
-Async component rendering.
-
-```ts
-await mutor.renderAsyncComponent("button", context);
-```
-
-#### `invalidateCacheEntry(identifier)`
-
+#### `invalidateTemplateCacheEntry(identifier)`
 Removes a cached component entry.
 
-```ts
-mutor.invalidateCacheEntry("button");
-```
-
 #### `addConfig(config)`
-
 Updates the engine config.
 
-```ts
-mutor.addConfig({ autoEscape: false });
-```
-
 #### `restoreDefaultConfig()`
-
 Restores the default config.
 
-```ts
-mutor.restoreDefaultConfig();
-```
-
 #### `getDiagnostics()`
-
 Returns cache diagnostics.
 
-```ts
-mutor.getDiagnostics();
-```
-
 #### `reset()`
-
-Restores default config and clears cached templates.
-
-```ts
-mutor.reset();
-```
+Restores default config and clears cached templates and layouts.
 
 ### Server API
 
@@ -766,44 +634,25 @@ import Mutor from "mutorjs/server";
 ```
 
 #### `renderFile(path, context)`
-
 Renders a template file.
 
-```ts
-mutor.renderFile("./views/home.html", context);
-```
-
-#### `renderFileAsync(path, context)`
-
-Async file rendering.
-
-```ts
-await mutor.renderFileAsync("./views/home.html", context);
-```
-
-#### `buildDir(src, destination, context)`
-
+#### `buildDir(src, destination, context, keepLayoutFiles?)`
 Renders a directory into another directory.
 
-```ts
-await mutor.buildDir("./site", "./dist", context);
-```
-
 #### `compileDir(src)`
-
 Precompiles matching files in a directory into the cache.
 
-```ts
-await mutor.compileDir("./views");
-```
+#### `addLayoutFromPath(path)`
+Registers a layout template from a file path.
 
-#### `invalidateCacheEntry(path)`
+#### `addLayoutsInDir(dir)`
+Recursively registers layout templates found in a directory.
 
-Removes a cached file entry. The server renderer resolves the path before removing it.
+#### `invalidateTemplateCacheEntry(path)`
+Removes a cached file entry.
 
-```ts
-mutor.invalidateCacheEntry("./views/home.html");
-```
+#### `invalidateLayoutCacheEntry(path)`
+Removes a cached server layout entry.
 
 ## CLI
 
@@ -813,7 +662,7 @@ Mutor ships with a small CLI.
 mutor <command> <input> [options]
 ```
 
-### Render A File
+### Render a file
 
 ```sh
 mutor render ./views/home.html --data ./data.json --out ./dist/home.html
@@ -821,13 +670,13 @@ mutor render ./views/home.html --data ./data.json --out ./dist/home.html
 
 Without `--out`, the result is printed to stdout.
 
-### Build A Directory
+### Build a directory
 
 ```sh
 mutor build ./site --data ./data.json --out ./dist
 ```
 
-### Compile A Template
+### Compile a template
 
 ```sh
 mutor compile ./views/home.html --out ./compiled.txt
@@ -843,18 +692,17 @@ mutor compile ./views/home.html --out ./compiled.txt
 | `--version` | Print the installed version |
 | `--help` | Show CLI help |
 
-## Good To Know
+## Good to know
 
-- Mutor has no layout inheritance. Compose pages from partials/components and context.
-- Includes inherit their parent context when no context is passed.
-- The current context is available as `Mutor::$$context`.
-- Use async render methods when templates use `Mutor::await`.
-- File cache does not watch the filesystem.
-- Function calls from context values are disabled by default.
-- Array/object/function/class literals are not part of the template language.
-- Use `JSON::parse(...)` or pass data through context when you need arrays or objects.
-- Auto-escaping only changes strings. Non-string values are returned as they are.
-- Missing includes can throw, return empty output, log, or use `onIncludeError`, depending on config.
+- Includes inherit their parent context when no context is passed
+- The current context is available as `Mutor::$$context`
+- Layout directives are top-of-file metadata by design
+- File cache does not watch the filesystem
+- Function calls from context values are disabled by default
+- Array/object/function/class literals are not part of the template language
+- Use `JSON::parse(...)` or pass data through context when you need arrays or objects
+- `HTML::safe(...)` bypasses escaping and should only be used for trusted content
+- Missing includes can throw, return empty output, log, or use `onIncludeError`, depending on config
 
 ## License
 

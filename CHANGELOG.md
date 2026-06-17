@@ -2,6 +2,42 @@
 
 All notable changes to Mutor.js will be documented in this file.
 
+## [3.0.0] - 2026-06-17
+
+### Added
+
+- Official synchronous v3 release line
+- Layout support through `{{# layout ... }}`, `{{# use ... }}`, and `{{ ::slot }}`
+- `::prop` shorthand alias for Mutor-specific namespace members such as `::include`, `::slot`, and `::$$context`
+- `break` and `continue` control-flow tags inside loops
+- `addLayout(...)` for in-memory layout registration
+- `addLayoutFromPath(...)` for loading a layout from disk
+- `addLayoutsInDir(...)` for recursive file-based layout registration
+- `invalidateLayoutCacheEntry(...)` for server layout cache invalidation
+- Expanded client and server regression coverage, including file resolution tests
+
+### Changed
+
+- Documentation rewritten to match the v3 API surface
+- File rendering now resolves top-level relative paths correctly with `rootDir`
+- Root-constrained include checks now use safer relative-path validation
+- `buildDir(...)` now rejects destinations that are the same as, or nested inside, the source directory
+- Server directory workflows now register layouts from matching files
+- Layout files are skipped from build output by default unless explicitly kept
+- Auto-escaping and runtime behavior are now documented more precisely
+
+### Removed
+
+- Async rendering APIs and async-template documentation
+- v2-era documentation claiming layouts were unsupported
+
+### Security
+
+- Retained guarded expression execution model
+- Retained blocked dangerous property access
+- Retained default restriction on function calls from context values
+- Retained rootDir enforcement for server-side includes
+
 ## [2.0.0] - 2026-06-07
 
 ### Added

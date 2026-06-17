@@ -10,12 +10,18 @@ import getLineNumberAndIndex from "../utils/get-line-and-column-nums";
 import getLineSnapshot from "../utils/get-line-snapshot";
 import isEscaped from "../utils/is-escaped";
 import build from "./build";
-import { AsyncFunction } from "./constants";
 import { MutorCompilerError } from "./error";
 import generateAst from "./generate-ast";
 import parse from "./parse";
 import tokenize from "./tokenize";
 
+/**
+ * Compiles the given template source into a JavaScript function.
+ * @param src The template source string to compile.
+ * @param config The Mutor configuration object.
+ * @param meta The compile metadata object.
+ * @returns A compiled JavaScript function as a string.
+ */
 export default function compile(
   src: string,
   config: MutorConfig,
@@ -35,8 +41,6 @@ export default function compile(
     debugRuntimeErrors,
   } = config;
 
-  // Function mode (sync/async)
-  let mode: "sync" | "async" = "sync";
   // Whitespace control state
   let trimNext = false,
     cursor = 0,
@@ -104,6 +108,7 @@ export default function compile(
     // Accumulate text in between template tags
     const text = src.slice(cursor, templateOpenTagIdx);
     const trimmedText = trimNext ? text.trimStart() : text;
+
     // Reset the whitespace control state
     trimNext = false;
 
@@ -123,15 +128,16 @@ export default function compile(
       continue;
     }
 
-    // Switch to async mode if Mutor::await is used
-    if (expressionMetadata.usesAwait && mode !== "async") {
-      mode = "async";
-    }
-
     try {
       const tokens = tokenize(expressionMetadata.inner);
       const ast = generateAst(tokens, { allowFnCalls });
-      const js = build(ast, { allowedProps, forbiddenProps, scope });
+      const js = build(ast, {
+        allowedProps,
+        forbiddenProps,
+        scope,
+        autoEscape,
+        escapeCurrentToken: true,
+      });
 
       // Handle for loop variables
       if (expressionMetadata.isBlock && expressionMetadata.requiresBlockClose) {
@@ -139,7 +145,10 @@ export default function compile(
           const { variable, secondaryVariable } = ast as ForExpr;
 
           scope.push(variable);
-          if (secondaryVariable) scope.push(secondaryVariable);
+
+          if (secondaryVariable) {
+            scope.push(secondaryVariable);
+          }
 
           blockOpeningStack.push({
             type: BlockType.LOOP,
@@ -187,6 +196,17 @@ export default function compile(
           scope.splice(-lastBlockOpened.scopeSize);
         }
 
+        // Check for 'break' or 'continue' outside of a loop block
+        if (
+          (js === "break" || js === "continue") &&
+          !blockOpeningStack.some((block) => block.type === BlockType.LOOP)
+        ) {
+          throw {
+            message: `'break' or 'continue' are not allowed outside of a loop block.`,
+            pos: ast.pos,
+          };
+        }
+
         body += js;
         continue;
       }
@@ -194,26 +214,17 @@ export default function compile(
       if (expressionMetadata.isBlock) {
         body += js;
       } else {
-        // Only escape unknown values returned from fn calls or object property resolution
-        // Values returned from Mutor::include should be taken as is.
-
         if (debugRuntimeErrors) {
           const [line, lineIndex] = getLineNumberAndIndex(
             src,
             templateOpenTagIdx,
           );
+
           const lineText = getLineSnapshot(src, lineIndex);
-          body +=
-            // Escape the return values of unknown values at runtime
-            autoEscape && !js.startsWith("namespaces.Mutor.include")
-              ? `try{acc+=escapeFn(${js});}catch(e){throw new MutorRuntimeError(e??"An unknown error ocurred.",${line},\`${escapeRawText(lineText)}\`,${templateOpenTagIdx},\`${escapeRawText(meta.path)}\`);}`
-              : `try{acc+=${js};}catch(e){throw new MutorRuntimeError(e??"An unknown error ocurred.",${line},\`${escapeRawText(lineText)}\`,${templateOpenTagIdx},\`${escapeRawText(meta.path)}\`);}`;
+
+          body += `try{acc+=(${js})??"";}catch(e){throw new MutorRuntimeError(e??"An unknown error ocurred.",${line},\`${escapeRawText(lineText)}\`,${templateOpenTagIdx},\`${escapeRawText(meta.path)}\`);}`;
         } else {
-          body +=
-            // Escape the return values of unknown values at runtime
-            autoEscape && !js.startsWith("namespaces.Mutor.include")
-              ? `acc+=escapeFn(${js});`
-              : `acc+=${js};`;
+          body += `acc+=(${js})??"";`;
         }
       }
     } catch (e) {
@@ -236,6 +247,7 @@ export default function compile(
     }
   }
 
+  // If there are any open blocks left in the stack, throw an error
   if (blockOpeningStack.length) {
     const lastPos = blockOpeningStack.pop()?.pos as number;
     const [line, lineIndex] = getLineNumberAndIndex(src, lastPos);
@@ -250,25 +262,15 @@ export default function compile(
   }
 
   body += `return acc;`;
-  return mode === "async"
-    ? new AsyncFunction(
-        "ctx",
-        "namespaces",
-        "allowedProps",
-        "forbiddenProps",
-        "escapeFn",
-        "validateComputedProps",
-        "MutorRuntimeError",
-        body,
-      )
-    : new Function(
-        "ctx",
-        "namespaces",
-        "allowedProps",
-        "forbiddenProps",
-        "escapeFn",
-        "validateComputedProps",
-        "MutorRuntimeError",
-        body,
-      );
+
+  return new Function(
+    "ctx",
+    "namespaces",
+    "allowedProps",
+    "forbiddenProps",
+    "escapeFn",
+    "validateComputedProps",
+    "MutorRuntimeError",
+    body,
+  );
 }

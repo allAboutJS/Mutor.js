@@ -1,4 +1,5 @@
 import type { MutorConfig } from "../types/types";
+import escapeFn from "../utils/escape-fn";
 import { MutorError } from "./error";
 
 export const keywords = new Set([
@@ -83,6 +84,7 @@ export const ESCAPE_MAP: Record<string, string> = {
   "'": "&#39;",
 };
 
+/** The default Mutor configuration object. */
 export const defaultConfig: MutorConfig = {
   build: {
     include: new Set([".html", ".txt"]),
@@ -120,6 +122,16 @@ export const defaultConfig: MutorConfig = {
 };
 
 export const namespaces = {
+  HTML: {
+    escape(value: string) {
+      return escapeFn(value);
+    },
+
+    safe(value: string) {
+      return value;
+    },
+  },
+
   JSON: {
     stringify(value: any, space?: number) {
       return JSON.stringify(value, null, space);
@@ -408,6 +420,3 @@ export const namespaces = {
     },
   },
 };
-
-export const AsyncFunction = (async () => {})
-  .constructor as FunctionConstructor;

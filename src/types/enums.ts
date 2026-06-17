@@ -26,7 +26,7 @@ export enum ExprType {
   ELSE,
   BREAK,
   CONTINUE,
-  END,
+  BLOCK_END,
 }
 
 export enum LoopType {

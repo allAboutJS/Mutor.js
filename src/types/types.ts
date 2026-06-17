@@ -21,7 +21,7 @@ export type Token =
   | OperatorToken;
 
 export type EndExpr = {
-  type: ExprType.END;
+  type: ExprType.BLOCK_END;
   pos: number;
 };
 
@@ -210,12 +210,6 @@ export type PartialMutorConfig = Partial<Omit<MutorConfig, "delimiters">> & {
   };
 };
 
-export type BuildContext = {
-  scope: string[];
-  forbiddenProps: Set<string>;
-  allowedProps: Set<string>;
-};
-
 export type CompileMetadata = {
   path: string;
 };
@@ -235,7 +229,7 @@ export type ExitCode = 0 | 1 | 2;
 export interface RuntimeFrame {
   context: any;
   renderedPath: string;
-  includeStack: Set<string>;
+  renderStack: Set<string>;
 }
 
 export interface ParseState {
@@ -248,7 +242,8 @@ export interface BuildState {
   scope: string[];
   forbiddenProps: Set<string>;
   allowedProps: Set<string>;
-  context: BuildContext;
+  autoEscape: boolean;
+  escapeCurrentToken: boolean;
 }
 
 export type BlockState =

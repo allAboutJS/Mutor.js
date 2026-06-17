@@ -9,6 +9,11 @@ const DIGIT_PATTERN = /[0-9]/;
 const HEX_DIGIT_PATTERN = /[0-9a-fA-F]/;
 const VALIDATION_PATTERN = /[a-zA-Z$_0-9\s\t\r\n'"`]/;
 
+/**
+ * Tokenizes an expression string into an array of tokens.
+ * @param expr The expression string to tokenize.
+ * @returns The array of tokens.
+ */
 export default function tokenize(expr: string) {
   let cursor = 0,
     char = "";

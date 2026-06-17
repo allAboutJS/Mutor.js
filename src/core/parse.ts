@@ -1,5 +1,12 @@
 import type { MutorConfig } from "../types/types";
 
+/**
+ * Parses a template directive block by removing delimiters, detecting whitespace-trim modifiers,
+ * and classifying the block as a comment, control-flow directive, or block terminator.
+ * @param templateBlock The template block to parse.
+ * @param delimiters The delimiters to use for parsing.
+ * @returns The parsed AST node.
+ */
 export default function parse(
   templateBlock: string,
   { delimiters }: Pick<MutorConfig, "delimiters">,
@@ -40,6 +47,5 @@ export default function parse(
     isBlockEnd: inner === "endif" || inner === "endfor",
     hasContext: inner.startsWith("for "),
     requiresBlockClose: inner.startsWith("for ") || inner.startsWith("if "),
-    usesAwait: inner.includes("Mutor::await"),
   };
 }

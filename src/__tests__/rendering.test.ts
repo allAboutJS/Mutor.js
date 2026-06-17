@@ -90,6 +90,32 @@ describe("Mutor Rendering Logic", () => {
     ).toBe("13");
   });
 
+  test("should scope break and continue to the current nested loop", () => {
+    expect(
+      engine.render(
+        "{{ for group of groups }}[{{ for item of group }}{{ if item == 2 }}{{ continue }}{{ endif }}{{ item }}{{ if item == 3 }}{{ break }}{{ endif }}{{ endfor }}]{{ endfor }}",
+        {
+          groups: [
+            [1, 2, 3, 4],
+            [5, 2, 6],
+          ],
+        },
+      ),
+    ).toBe("[13][56]");
+  });
+
+  test("should throw when break is used outside a loop", () => {
+    expect(() => engine.render("{{ break }}", {})).toThrow(
+      /Illegal break statement/,
+    );
+  });
+
+  test("should throw when continue is used outside a loop", () => {
+    expect(() => engine.render("{{ continue }}", {})).toThrow(
+      /Illegal continue statement/,
+    );
+  });
+
   test("should allow keywords as property names", () => {
     expect(
       engine.render("{{ object.default }}", { object: { default: "a" } }),

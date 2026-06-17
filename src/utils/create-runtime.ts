@@ -7,6 +7,6 @@ export default function createRuntimeFrame(
   return {
     context,
     renderedPath,
-    includeStack: new Set([renderedPath && renderedPath]),
+    renderStack: new Set([renderedPath && renderedPath]),
   };
 }

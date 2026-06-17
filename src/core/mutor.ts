@@ -8,18 +8,21 @@ import MutorBase from "./mutor.base";
 export default class Mutor extends MutorBase {
   constructor(config: PartialMutorConfig = {}) {
     super(config);
+    this.__setupIncludeForRuntime(createRuntimeFrame(null));
   }
 
   private __setupIncludeForRuntime(runtime: RuntimeFrame) {
     this.__namespaces.Mutor.include = (path: string, context: any) => {
-      if (runtime.includeStack.has(path)) {
+      if (runtime.renderStack.has(path)) {
+        const stackArr = Array.from(runtime.renderStack);
         throw new MutorError(
-          `Circular include detected.\n${Array.from(runtime.includeStack).join(" -> ")} -> ${path}`,
+          `Circular dependency detected during rendering.\n${stackArr.join("\n-> ")}\n-> ${stackArr[stackArr.length - 2] || path}`,
         );
       }
 
       const previousPath = runtime.renderedPath;
-      runtime.includeStack.add(path);
+
+      runtime.renderStack.add(path);
       runtime.renderedPath = path;
 
       try {
@@ -31,22 +34,16 @@ export default class Mutor extends MutorBase {
       } catch (err) {
         return this.__handleError(err, previousPath, path, undefined);
       } finally {
-        runtime.includeStack.delete(path);
+        runtime.renderStack.delete(path);
         runtime.renderedPath = previousPath;
       }
     };
   }
 
-  render(template: string, context: any): string {
-    const runtime = createRuntimeFrame(context, "anonymous");
+  render(template: string, context?: any): string {
+    const runtime = createRuntimeFrame(context);
     this.__setupIncludeForRuntime(runtime);
     return this.__renderWithRuntime(template, runtime);
-  }
-
-  renderAsync(template: string, context: any): Promise<string> {
-    return new Promise((resolve) => {
-      resolve(this.render(template, context));
-    });
   }
 
   private __renderComponent(
@@ -83,7 +80,7 @@ export default class Mutor extends MutorBase {
         MutorRuntimeError,
       );
 
-      return result;
+      return this.__renderWithLayout(runtime, compiled.deps, result);
     } finally {
       // Restore previous state
       runtime.context = previousContext;
@@ -91,18 +88,12 @@ export default class Mutor extends MutorBase {
     }
   }
 
-  renderComponent(identifier: string, context: any): string {
+  renderComponent(identifier: string, context?: any): string {
     return this.__renderComponent(
       identifier,
       context,
       createRuntimeFrame(context, identifier),
     );
-  }
-
-  renderAsyncComponent(identifier: string, context: any): Promise<string> {
-    return new Promise((resolve) => {
-      resolve(this.renderComponent(identifier, context));
-    });
   }
 
   registerComponent(identifier: string, template: string) {

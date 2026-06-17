@@ -24,6 +24,13 @@ import {
   unaryOperators,
 } from "./constants";
 
+/**
+ * Throws an error if the current token does not match the expected type and value.
+ * @param state - The current parse state.
+ * @param type - The expected token type.
+ * @param value - The expected token value (optional).
+ * @returns The current token if it matches the expected type and value.
+ */
 function expectOrThrow(state: ParseState, type: TokenType): Token;
 function expectOrThrow(
   state: ParseState,
@@ -65,6 +72,7 @@ function expectOrThrow(
   return state.tokens[state.cursor++];
 }
 
+/** Parses a for loop expression from the given parse state. */
 function parseForLoop(state: ParseState): ForExpr {
   const pos = state.tokens[state.cursor - 1].pos;
   const variable = expectOrThrow(state, TokenType.IDENT).value;
@@ -98,11 +106,13 @@ function parseForLoop(state: ParseState): ForExpr {
   };
 }
 
+/** Parses an if expression from the given parse state. */
 function parseIfExpression(state: ParseState): IfExpr {
   const condition = parseTernaryExpr(state);
   return { condition, pos: condition.pos, type: ExprType.IF };
 }
 
+/** Parses an else expression from the given parse state. */
 function parseElseExpression(state: ParseState): ElseExpr | ElseIfExpr {
   const pos = state.tokens[state.cursor - 1].pos;
 
@@ -114,6 +124,7 @@ function parseElseExpression(state: ParseState): ElseExpr | ElseIfExpr {
   }
 }
 
+/** Extracts function arguments from the given parse state. */
 function extractFnArgs(state: ParseState): Expr[] {
   const args: Expr[] = [];
 
@@ -137,6 +148,7 @@ function extractFnArgs(state: ParseState): Expr[] {
   return args;
 }
 
+/** Parses a primary expression from the given parse state. */
 function parsePrimaryExpr(state: ParseState): Expr {
   const token = state.tokens[state.cursor++];
 
@@ -180,7 +192,7 @@ function parsePrimaryExpr(state: ParseState): Expr {
       (token.value === "endif" || token.value === "endfor") &&
       state.tokens.length === 1
     ) {
-      return { type: ExprType.END, pos: token.pos };
+      return { type: ExprType.BLOCK_END, pos: token.pos };
     }
 
     if (token.value === "if" && state.cursor === 1) {
@@ -220,12 +232,29 @@ function parsePrimaryExpr(state: ParseState): Expr {
     };
   }
 
+  // Allow ::propery as an alias for Mutor::property
+  if (token.type === TokenType.OPERATOR && token.value === "::") {
+    const left = {
+      type: ExprType.IDENT,
+      value: "Mutor",
+      pos: token.pos,
+    } as Expr;
+
+    expectOrThrow(state, TokenType.IDENT);
+    state.cursor--;
+
+    const right = parsePrimaryExpr(state);
+
+    return { type: ExprType.NAMESPACE, left, right, pos: token.pos };
+  }
+
   throw {
     message: `Unexpected token '${token.value}'.`,
     pos: token.pos,
   };
 }
 
+/** Parses a property identifier from the given parse state. */
 function parsePropertyIdentifier(state: ParseState): IdentExpr {
   const token = state.tokens[state.cursor++];
 
@@ -242,6 +271,7 @@ function parsePropertyIdentifier(state: ParseState): IdentExpr {
   return { type: ExprType.IDENT, value: token.value, pos: token.pos };
 }
 
+/** Parses a property access from the given parse state. */
 function parsePropertyAccess(state: ParseState): Expr {
   let left = parsePrimaryExpr(state);
 
@@ -307,8 +337,8 @@ function parsePropertyAccess(state: ParseState): Expr {
 
       if (
         isNamespace &&
-        (state.tokens[state.cursor - 2]?.type !== TokenType.IDENT ||
-          state.tokens[state.cursor]?.type !== TokenType.IDENT)
+        state.tokens[state.cursor - 2]?.type !== TokenType.IDENT &&
+        state.tokens[state.cursor]?.type !== TokenType.IDENT
       ) {
         throw {
           message: `Invalid namespaces access. Expected syntax <IDENTIFIER>::<IDENTIFIER>, but got '${state.tokens[state.cursor - 2]?.value}::${state.tokens[state.cursor]?.value ?? ""}' instead.`,
@@ -382,6 +412,7 @@ function parsePropertyAccess(state: ParseState): Expr {
   return left;
 }
 
+/** Parses a binary expression from the given parse state. */
 function parseBinaryExpr(
   state: ParseState,
   leftParser: (state: ParseState) => Expr,
@@ -407,10 +438,12 @@ function parseBinaryExpr(
   return left;
 }
 
+/** Parses an exponentiation expression from the given parse state. */
 function parseExponentiationExpr(state: ParseState): Expr {
   return parseBinaryExpr(state, parsePropertyAccess, exponentiationOperators);
 }
 
+/** Parses a multiplicative expression from the given parse state. */
 function parseMultiplicativeExpr(state: ParseState): Expr {
   return parseBinaryExpr(
     state,
@@ -419,34 +452,42 @@ function parseMultiplicativeExpr(state: ParseState): Expr {
   );
 }
 
+/** Parses an additive expression from the given parse state. */
 function parseAdditiveExpr(state: ParseState): Expr {
   return parseBinaryExpr(state, parseMultiplicativeExpr, additiveOperators);
 }
 
+/** Parses a bitwise expression from the given parse state. */
 function parseBitwiseExpr(state: ParseState): Expr {
   return parseBinaryExpr(state, parseAdditiveExpr, bitwiseOperators);
 }
 
+/** Parses a comparison expression from the given parse state. */
 function parseComparisonExpr(state: ParseState): Expr {
   return parseBinaryExpr(state, parseBitwiseExpr, comparisonOperators);
 }
 
+/** Parses an equality expression from the given parse state. */
 function parseEqualityExpr(state: ParseState): Expr {
   return parseBinaryExpr(state, parseComparisonExpr, equalityOperators);
 }
 
+/** Parses a bitwise OR expression from the given parse state. */
 function parseBitwiseOrExpr(state: ParseState): Expr {
   return parseBinaryExpr(state, parseBitwiseXorExpr, bitwiseOrOperators);
 }
 
+/** Parses a bitwise XOR expression from the given parse state. */
 function parseBitwiseXorExpr(state: ParseState): Expr {
   return parseBinaryExpr(state, parseBitwiseAndExpr, bitwiseXorOperators);
 }
 
+/** Parses a bitwise AND expression from the given parse state. */
 function parseBitwiseAndExpr(state: ParseState): Expr {
   return parseBinaryExpr(state, parseEqualityExpr, bitwiseAndOperators);
 }
 
+/** Parses a logical AND expression from the given parse state. */
 function parseLogicalAndExpr(state: ParseState): Expr {
   let left = parseBitwiseOrExpr(state);
 
@@ -468,6 +509,7 @@ function parseLogicalAndExpr(state: ParseState): Expr {
   return left;
 }
 
+/** Parses a logical OR expression from the given parse state. */
 function parseLogicalOrExpr(state: ParseState): Expr {
   let left = parseLogicalAndExpr(state);
 
@@ -489,6 +531,7 @@ function parseLogicalOrExpr(state: ParseState): Expr {
   return left;
 }
 
+/** Parses a nullish coalesce expression from the given parse state. */
 function parseNullishCoalesceExpr(state: ParseState): Expr {
   let left = parseLogicalOrExpr(state);
 
@@ -510,6 +553,7 @@ function parseNullishCoalesceExpr(state: ParseState): Expr {
   return left;
 }
 
+/** Parses a ternary expression from the given parse state. */
 function parseTernaryExpr(state: ParseState): Expr {
   const condition = parseNullishCoalesceExpr(state);
 
@@ -534,6 +578,12 @@ function parseTernaryExpr(state: ParseState): Expr {
   };
 }
 
+/**
+ * Generates an abstract syntax tree (AST) from a list of tokens.
+ * @param tokens The tokens to parse.
+ * @param config The configuration for parsing.
+ * @returns The parsed AST.
+ */
 export default function generateAst(
   tokens: Token[],
   config: { allowFnCalls: boolean },
