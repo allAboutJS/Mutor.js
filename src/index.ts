@@ -1,6 +1,4 @@
 import Mutor from "./core/mutor";
 
-export * from "./types/enums";
-export * from "./types/types";
-
+export { MutorConfig, PartialMutorConfig } from "./types/types";
 export default Mutor;

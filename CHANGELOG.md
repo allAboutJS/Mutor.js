@@ -2,6 +2,13 @@
 
 All notable changes to Mutor.js will be documented in this file.
 
+## [3.0.2] - 2026-06-17
+
+### Changed
+
+- Root package exports are now narrower in both `mutorjs` and `mutorjs/server`
+- Instead of re-exporting all enums and types, the public entry points now export only `MutorConfig` and `PartialMutorConfig`
+
 ## [3.0.1] - 2026-06-17
 
 ### Added
