@@ -153,7 +153,7 @@ function buildCall(state: BuildState, expr: CallExpr): string {
     if (
       autoEscape &&
       escapeCurrentToken &&
-      !/namespaces.(Mutor.include|HTML.safe)\(.*\)/.test(result)
+      !/namespaces.(Mutor.include|HTML.safe)\(.*[\s]*\)/.test(result)
     ) {
       return `escapeFn(${result})`;
     }
