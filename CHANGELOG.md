@@ -2,6 +2,13 @@
 
 All notable changes to Mutor.js will be documented in this file.
 
+## [3.0.4] - 2026-06-27
+
+### Changed
+
+- Removed CLI `compile` command. This is a breaking change, but it won't affect any existing usage, as there was no one using it anyway.
+- Override `invalidateTemplateCacheEntry` behavior in server instance to resolve paths to their absolute forms before invalidating the cache
+
 ## [3.0.2] - 2026-06-17
 
 ### Changed
