@@ -1,6 +1,6 @@
 {
   "name": "mutorjs",
-  "version": "3.0.3",
+  "version": "3.0.4",
   "description": "A fast synchronous templating engine for Node.js and the browser.",
   "homepage": "https://github.com/allAboutJS/Mutor.js#readme",
   "bugs": {
