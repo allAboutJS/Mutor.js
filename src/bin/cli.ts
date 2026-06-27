@@ -5,6 +5,7 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
+import { performance } from "node:perf_hooks";
 import { argv, exit } from "node:process";
 import { version } from "../../package.json";
 import Mutor from "../core/mutor.server";
@@ -23,7 +24,7 @@ import {
   JsonParseError,
 } from "./cli-errors";
 
-const COMMANDS = new Set(["compile", "build", "render"]);
+const COMMANDS = new Set(["build", "render"]);
 const OPTIONS = new Set(["--out", "--data", "--config"]);
 
 // Kept in sync with package.json at build time via your bundler / tsconfig paths.
@@ -33,12 +34,11 @@ const USAGE = `
 Usage: mutor <command> <input> [options]
 
 Commands:
-  compile <template>   Compile a template file to its intermediate form
   build   <dir>        Render all templates in a directory using a data source
   render  <template>   Compile and immediately render a template
 
 Options:
-  --out     <path>     Output file or directory (defaults to stdout for compile/render)
+  --out     <path>     Output file or directory (defaults to stdout for render)
   --data    <path>     JSON data file to use as render context (required for build/render)
   --config  <path>     JSON config file to pass to Mutor
   --version            Print the version and exit
@@ -165,33 +165,6 @@ export function parseArgs(rawArgs: string[]): CommandStruct {
   return struct;
 }
 
-export function handleCompileCommand(mutor: Mutor, args: CommandStruct): void {
-  const inputPath = toAbsolutePath(args.commandData);
-  assertIsFile(inputPath, "<input>");
-
-  const template = safeReadFile(inputPath);
-  const compiled = mutor.compile(template);
-  const output = compiled.toString();
-
-  if (args["--out"]) {
-    const outPath = toAbsolutePath(args["--out"]);
-
-    // Register cleanup so a SIGINT mid-write doesn't leave a truncated file.
-    registerCleanup(() => {
-      try {
-        rmSync(outPath, { force: true });
-      } catch {
-        /* best-effort */
-      }
-    });
-
-    safeWriteFile(outPath, output);
-    console.log(`Compiled → ${args["--out"]}`);
-  } else {
-    console.log(output);
-  }
-}
-
 export async function handleBuildCommand(
   mutor: Mutor,
   args: CommandStruct,
@@ -225,11 +198,16 @@ export async function handleBuildCommand(
     }
   });
 
+  const start = performance.now();
+
   buildStarted = true;
   await mutor.buildDir(inputPath, outPath, context);
   buildStarted = false; // Succeeded — don't clean up on exit.
 
+  const end = performance.now();
+
   console.log(`Built → ${args["--out"]}`);
+  console.log(`Done in ${(end - start).toFixed(2)}ms`);
 }
 
 export async function handleRenderCommand(
@@ -247,6 +225,7 @@ export async function handleRenderCommand(
   assertIsFile(dataPath, "--data");
   assertExtension(dataPath, "--data", ".json");
 
+  const start = performance.now();
   const context = safeParseJsonFile(dataPath);
   const template = safeReadFile(inputPath);
   const output = mutor.render(template, context);
@@ -264,7 +243,11 @@ export async function handleRenderCommand(
     console.log(`Rendered → ${args["--out"]}`);
   } else {
     console.log(output);
+    console.log();
   }
+
+  const end = performance.now();
+  console.log(`Done in ${(end - start).toFixed(2)}ms`);
 }
 
 let cleanupFn: CleanupFn | null = null;
@@ -298,9 +281,6 @@ async function main(): Promise<void> {
   }
 
   switch (args.command) {
-    case "compile":
-      handleCompileCommand(mutor, args);
-      break;
     case "build":
       await handleBuildCommand(mutor, args);
       break;

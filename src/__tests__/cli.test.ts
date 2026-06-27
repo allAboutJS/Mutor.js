@@ -1,7 +1,6 @@
 import { readFileSync, statSync, writeFileSync } from "node:fs";
 import {
   handleBuildCommand,
-  handleCompileCommand,
   handleRenderCommand,
   parseArgs,
   safeParseJsonFile,
@@ -208,80 +207,6 @@ describe("safeParseJsonFile", () => {
     mockReadFileSync.mockReturnValue("{bad}");
     expect(() => safeParseJsonFile("/config/bad.json")).toThrow(
       /config\/bad\.json/,
-    );
-  });
-});
-
-describe("handleCompileCommand", () => {
-  beforeEach(() => jest.clearAllMocks());
-
-  it("writes compiled output to --out when provided", () => {
-    mockStatSync.mockReturnValue(asFile());
-    mockReadFileSync.mockReturnValue("<template>");
-    mockWriteFileSync.mockReturnValue(undefined);
-
-    const mutor = makeMutor();
-    const args: CommandStruct = {
-      command: "compile",
-      commandData: "tpl.html",
-      "--out": "out.html",
-    };
-
-    handleCompileCommand(mutor as never, args);
-
-    expect(mutor.compile).toHaveBeenCalledWith("<template>");
-    expect(mockWriteFileSync).toHaveBeenCalledWith(
-      "/abs/out.html",
-      "<compiled>",
-      "utf-8",
-    );
-  });
-
-  it("prints to stdout when --out is absent", () => {
-    mockStatSync.mockReturnValue(asFile());
-    mockReadFileSync.mockReturnValue("<template>");
-
-    const mutor = makeMutor();
-    const consoleSpy = jest.spyOn(console, "log").mockImplementation(() => {});
-
-    handleCompileCommand(mutor as never, {
-      command: "compile",
-      commandData: "tpl.html",
-    });
-
-    expect(consoleSpy).toHaveBeenCalledWith("<compiled>");
-    consoleSpy.mockRestore();
-  });
-
-  it("throws ArgumentError when input path is not a file", () => {
-    mockStatSync.mockReturnValue(asDir());
-
-    expect(() =>
-      handleCompileCommand(makeMutor() as never, {
-        command: "compile",
-        commandData: "some-dir",
-      }),
-    ).toThrow(ArgumentError);
-  });
-
-  it("registers a cleanup so SIGINT mid-write removes the partial --out file", () => {
-    mockStatSync.mockReturnValue(asFile());
-    mockReadFileSync.mockReturnValue("<template>");
-    mockWriteFileSync.mockReturnValue(undefined);
-
-    handleCompileCommand(makeMutor() as never, {
-      command: "compile",
-      commandData: "tpl.html",
-      "--out": "out.html",
-    });
-
-    // The write completed successfully — cleanup is registered but hasn't fired.
-    // Simulating the actual signal is an integration/e2e concern; here we verify
-    // that the write path completed correctly and the output is correct.
-    expect(mockWriteFileSync).toHaveBeenCalledWith(
-      "/abs/out.html",
-      "<compiled>",
-      "utf-8",
     );
   });
 });
