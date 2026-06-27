@@ -29,6 +29,11 @@ export default class MutorServer extends MutorBase {
       const src = readFileSync(toAbsolutePath(path), "utf-8");
       super.addLayout(src);
     };
+
+    this.invalidateTemplateCacheEntry = (path) => {
+      const absolutePath = this.__resolvePath(path);
+      return super.invalidateTemplateCacheEntry(absolutePath);
+    };
   }
 
   /** Registers a layout from a file path. */
