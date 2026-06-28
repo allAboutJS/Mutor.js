@@ -2,6 +2,12 @@
 
 All notable changes to Mutor.js will be documented in this file.
 
+## [3.0.5] - 2026-06-28
+
+### Changed
+
+- Regex-based escape detection now uses greedy matching to capture complete mutor includes and html safe function calls.
+
 ## [3.0.4] - 2026-06-27
 
 ### Changed
