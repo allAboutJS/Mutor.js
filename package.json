@@ -1,6 +1,6 @@
 {
   "name": "mutorjs",
-  "version": "3.0.4",
+  "version": "3.0.5",
   "description": "A fast synchronous templating engine for Node.js and the browser.",
   "homepage": "https://github.com/allAboutJS/Mutor.js#readme",
   "bugs": {
@@ -10,7 +10,7 @@
     "type": "git",
     "url": "git+https://github.com/allAboutJS/Mutor.js.git"
   },
-  "license": "ISC",
+  "license": "MIT",
   "author": "Onah Victor",
   "type": "module",
   "main": "./dist/index.js",
