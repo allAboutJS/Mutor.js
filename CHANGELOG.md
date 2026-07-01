@@ -2,6 +2,19 @@
 
 All notable changes to Mutor.js will be documented in this file.
 
+## [3.0.6] - 2026-07-01
+
+### Changed
+
+- Trusted HTML detection now analyzes the parsed expression tree instead of generated output, eliminating false positives in nested calls and string literals.
+- Auto-escaping now correctly preserves trusted HTML when concatenated with untrusted values using the `+` operator.
+- Ternary expression conditions are now evaluated without HTML escaping while preserving escaping for the selected branch.
+
+### Fixed
+
+- Resolved incorrect escaping behavior for nested `HTML::safe(...)` and `Mutor::include(...)` function calls.
+- Improved auto-escaping consistency across complex expressions.
+
 ## [3.0.5] - 2026-06-28
 
 ### Changed
