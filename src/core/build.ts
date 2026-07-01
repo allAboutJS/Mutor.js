@@ -267,7 +267,13 @@ function buildExpr(state: BuildState, expr: Expr): string {
 
     case ExprType.TERNARY: {
       const { condition, left, right } = expr as TernaryExpr;
-      return `${buildExpr(state, condition)} ? ${buildExpr(state, left)} : ${buildExpr(state, right)}`;
+
+      // Ternary expression condition should not be auto-escaped
+      state.escapeCurrentToken = false;
+      const conditionResult = buildExpr(state, condition);
+      state.escapeCurrentToken = true;
+
+      return `${conditionResult} ? ${buildExpr(state, left)} : ${buildExpr(state, right)}`;
     }
 
     case ExprType.PROP_ACCESS:
