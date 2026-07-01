@@ -2,7 +2,7 @@ import { ESCAPE_MAP } from "../core/constants";
 
 /** Escapes HTML special characters in a string. */
 export default function escapeFn(e: unknown): unknown {
-  if (e === null || e === undefined) {
+  if (e === null || e === undefined || typeof e === "number") {
     return e;
   }
 

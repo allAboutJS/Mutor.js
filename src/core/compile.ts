@@ -136,7 +136,6 @@ export default function compile(
         forbiddenProps,
         scope,
         autoEscape,
-        escapeCurrentToken: true,
       });
 
       // Handle for loop variables

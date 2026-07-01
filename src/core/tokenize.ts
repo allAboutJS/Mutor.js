@@ -177,7 +177,14 @@ export default function tokenize(expr: string) {
 
   /** Accumulates an operator token. */
   function accumulateOperator() {
-    const op = `${char}${expr[cursor + 1]}`;
+    let op = `${char}${expr[cursor + 1]}${expr[cursor + 2]}`;
+    if (operators.has(op)) {
+      tokens.push({ type: TokenType.OPERATOR, value: op, pos: cursor });
+      cursor += 2;
+      return;
+    }
+
+    op = `${char}${expr[cursor + 1]}`;
     if (operators.has(op)) {
       tokens.push({ type: TokenType.OPERATOR, value: op, pos: cursor });
       cursor++;

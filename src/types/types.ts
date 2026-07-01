@@ -242,7 +242,6 @@ export interface BuildState {
   forbiddenProps: Set<string>;
   allowedProps: Set<string>;
   autoEscape: boolean;
-  escapeCurrentToken: boolean;
 }
 
 export type BlockState =

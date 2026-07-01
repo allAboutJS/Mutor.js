@@ -31,7 +31,7 @@ export class MutorCompilerError extends MutorError {
 
     report += `${line} | ${lineText}\n`;
     // Visual Pointer
-    report += constructPointer(column, gutterWidth + 1);
+    report += constructPointer(column, gutterWidth + 2);
 
     super(report);
     Object.setPrototypeOf(this, MutorCompilerError.prototype);

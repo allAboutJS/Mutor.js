@@ -38,6 +38,7 @@ export const operators = new Set([
   ">=",
   "<=",
   "==",
+  "===",
   "!=",
   ">>",
   "<<",
@@ -54,7 +55,7 @@ export const operators = new Set([
 
 export const logicalOperators = new Set(["&&", "||", "??"]);
 
-export const equalityOperators = new Set(["==", "!="]);
+export const equalityOperators = new Set(["==", "!=", "==="]);
 
 export const comparisonOperators = new Set([">", "<", ">=", "<="]);
 

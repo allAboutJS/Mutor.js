@@ -35,13 +35,7 @@ function prefixWithCtx(state: BuildState, expr: IdentExpr): string {
     ? expr.value
     : `ctx.${expr.value}`;
 
-  // Escape the result if autoEscape is enabled
-  // and escapeCurrentToken is true
-  if (state.autoEscape && state.escapeCurrentToken) {
-    return `escapeFn(${result})`;
-  }
-
-  return result;
+  return state.autoEscape ? `escapeFn(${result})` : result;
 }
 
 /** Builds a namespace expression, ensuring the namespace is allowed. */
@@ -64,14 +58,11 @@ function buildNamespace(state: BuildState, expr: NamespaceExpr): string {
 
 /** Builds a property access expression, ensuring the property is allowed. */
 function buildPropAccess(state: BuildState, expr: PropAccessExpr): string {
-  const { autoEscape, escapeCurrentToken } = state;
+  const prevEscapeState = state.autoEscape;
 
   try {
-    // If autoEscape is enabled and escapeCurrentToken is true,
-    // set escapeCurrentToken to false to avoid double escaping
-    if (autoEscape && escapeCurrentToken) {
-      state.escapeCurrentToken = false;
-    }
+    // Disable autoescape when building prop access to avoid multiple escaping
+    state.autoEscape = false;
 
     const left = buildExpr(state, expr.left);
     const optionalChain = expr.optional ? "?." : "";
@@ -97,12 +88,7 @@ function buildPropAccess(state: BuildState, expr: PropAccessExpr): string {
           ? `${left}${optionalChain}[${right}]`
           : `${left}${optionalChain}[validateComputedProps(${right}, allowedProps, forbiddenProps)]`;
 
-      // Escape the result if autoEscape is enabled and escapeCurrentToken is true
-      if (autoEscape && escapeCurrentToken) {
-        return `escapeFn(${result})`;
-      }
-
-      return result;
+      return prevEscapeState ? `escapeFn(${result})` : result;
     }
 
     const propName = (expr.right as IdentExpr).value;
@@ -117,29 +103,18 @@ function buildPropAccess(state: BuildState, expr: PropAccessExpr): string {
 
     const result = `${left}${optionalChain || "."}${propName}`;
 
-    // Escape the result if autoEscape is enabled and escapeCurrentToken is true
-    if (autoEscape && escapeCurrentToken) {
-      return `escapeFn(${result})`;
-    }
-
-    return result;
+    return prevEscapeState ? `escapeFn(${result})` : result;
   } finally {
-    // Re-enable auto-escaping if it was disabled for this expression
-    if (autoEscape && escapeCurrentToken) {
-      state.escapeCurrentToken = true;
-    }
+    // Restore autoEscape if it was disabled for this expression
+    state.autoEscape = prevEscapeState;
   }
 }
 
 function buildCall(state: BuildState, expr: CallExpr): string {
-  const { autoEscape, escapeCurrentToken } = state;
+  const prevEscapeState = state.autoEscape;
 
   try {
-    // If autoEscape is enabled and escapeCurrentToken is true,
-    // set escapeCurrentToken to false to avoid double escaping
-    if (autoEscape && escapeCurrentToken) {
-      state.escapeCurrentToken = false;
-    }
+    state.autoEscape = false;
 
     const func = buildExpr(state, expr.expr);
     const optionalChain = expr.optional ? "?." : "";
@@ -148,30 +123,32 @@ function buildCall(state: BuildState, expr: CallExpr): string {
       .join(", ");
 
     const result = `${func}${optionalChain}(${args})`;
+    const callee = expr.expr;
+    const isTrustedPassthrough =
+      callee.type === ExprType.NAMESPACE &&
+      (((callee.left as IdentExpr).value === "Mutor" &&
+        (callee.right as IdentExpr).value === "include") ||
+        ((callee.left as IdentExpr).value === "HTML" &&
+          (callee.right as IdentExpr).value === "safe"));
 
-    // Escape function call values except Mutor::include
-    if (
-      autoEscape &&
-      escapeCurrentToken &&
-      !/namespaces\.(?:Mutor\.include|HTML\.safe)\([\s\S]*?\)/.test(result)
-    ) {
+    if (prevEscapeState && !isTrustedPassthrough) {
       return `escapeFn(${result})`;
     }
 
     return result;
   } finally {
-    // Re-enable auto-escaping if it was disabled for this expression
-    if (autoEscape && escapeCurrentToken) {
-      state.escapeCurrentToken = true;
-    }
+    // Restore autoEscape if it was disabled for this expression
+    state.autoEscape = prevEscapeState;
   }
 }
 
 /** Builds a for loop expression, ensuring the loop operator is correct and iterable is allowed. */
 function buildForLoop(state: BuildState, expr: ForExpr): string {
+  const prevEscapeState = state.autoEscape;
+
   try {
     // Disable auto-escaping for for loop expressions
-    state.escapeCurrentToken = false;
+    state.autoEscape = false;
 
     const { iterable, loopType, variable, secondaryVariable } = expr;
     const loopOperator = loopType === LoopType.IN ? "in" : "of";
@@ -188,31 +165,35 @@ function buildForLoop(state: BuildState, expr: ForExpr): string {
       : `for(const ${variable} in ${iterableValue}){`;
   } finally {
     // Re-enable auto-escaping
-    state.escapeCurrentToken = true;
+    state.autoEscape = prevEscapeState;
   }
 }
 
 /** Builds an if block expression. */
 function buildIfBlock(state: BuildState, expr: IfExpr): string {
+  const prevEscapeState = state.autoEscape;
+
   try {
     // Disable auto-escaping for if block expressions
-    state.escapeCurrentToken = false;
+    state.autoEscape = false;
     return `if(${build(expr.condition, state)}){`;
   } finally {
     // Re-enable auto-escaping
-    state.escapeCurrentToken = true;
+    state.autoEscape = prevEscapeState;
   }
 }
 
 /** Builds an else block expression. */
 function buildElseIfBlock(state: BuildState, expr: ElseIfExpr): string {
+  const prevEscapeState = state.autoEscape;
+
   try {
     // Disable auto-escaping for else if block expressions
-    state.escapeCurrentToken = false;
+    state.autoEscape = false;
     return `}else if(${build(expr.condition, state)}){`;
   } finally {
     // Re-enable auto-escaping
-    state.escapeCurrentToken = true;
+    state.autoEscape = prevEscapeState;
   }
 }
 
@@ -242,12 +223,7 @@ function buildExpr(state: BuildState, expr: Expr): string {
 
     case ExprType.STRING: {
       const result = `\`${STRING_ESCAPE_REGEX.test(expr.value) ? escapeRawText(expr.value) : expr.value}\``;
-
-      if (state.autoEscape && state.escapeCurrentToken) {
-        return `escapeFn(${result})`;
-      }
-
-      return result;
+      return state.autoEscape ? `escapeFn(${result})` : result;
     }
     case ExprType.IDENT:
       return prefixWithCtx(state, expr);
@@ -256,22 +232,43 @@ function buildExpr(state: BuildState, expr: Expr): string {
       return `(${buildExpr(state, (expr as GroupExpr).expr)})`;
 
     case ExprType.UNARY: {
+      const prevEscapeState = state.autoEscape;
       const { operator, expr: innerExpr } = expr as UnaryExpr;
-      return `${operator}${buildExpr(state, innerExpr)}`;
+
+      try {
+        state.autoEscape = false;
+        return `${operator}${buildExpr(state, innerExpr)}`;
+      } finally {
+        state.autoEscape = prevEscapeState;
+      }
     }
 
     case ExprType.BINARY: {
       const { left, operator, right } = expr as BinaryExpr;
-      return `${buildExpr(state, left)} ${operator} ${buildExpr(state, right)}`;
+      const prevEscapeState = state.autoEscape;
+
+      // If the operator is + operator, we can skip the auto-escape logic
+      // This allows us to avoid escaping HTML::safe return values
+      if (operator === "+") {
+        return `${buildExpr(state, left)} ${operator} ${buildExpr(state, right)}`;
+      }
+
+      try {
+        state.autoEscape = false;
+        const result = `${buildExpr(state, left)} ${operator} ${buildExpr(state, right)}`;
+        return prevEscapeState ? `escapeFn(${result})` : result;
+      } finally {
+        state.autoEscape = prevEscapeState;
+      }
     }
 
     case ExprType.TERNARY: {
       const { condition, left, right } = expr as TernaryExpr;
+      const prevEscapeState = state.autoEscape;
 
-      // Ternary expression condition should not be auto-escaped
-      state.escapeCurrentToken = false;
+      state.autoEscape = false;
       const conditionResult = buildExpr(state, condition);
-      state.escapeCurrentToken = true;
+      state.autoEscape = prevEscapeState;
 
       return `${conditionResult} ? ${buildExpr(state, left)} : ${buildExpr(state, right)}`;
     }
